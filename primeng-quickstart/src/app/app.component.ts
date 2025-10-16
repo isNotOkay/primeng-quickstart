@@ -158,6 +158,47 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
+    // 1) Load persisted engine; keep select empty until this completes
+    this.listsLoading.set(true);
+    this.apiService.getEngine().subscribe({
+      next: (dto) => {
+        // Set enum value as-is from the backend ("Sqlite"/"Excel")
+        this.engineControl.setValue(dto.engine, {emitEvent: false});
+        this.loadedTablesAndViews.set(false);
+        // this.clearSelectedListItem();
+        // this.loadTablesAndViews(); // initial load after engine arrives
+      },
+      error: () => {
+        this.notificationService.error('Datenquelle laden fehlgeschlagen.');
+        this.loadedTablesAndViews.set(false);
+        // this.clearSelectedListItem();
+        // this.loadTablesAndViews();
+      },
+    });
+
+    // 2) Persist engine changes when user selects a value
+    this.engineControl.valueChanges.subscribe((engine) => {
+      if (engine == null) return; // ignore null
+      this.listsLoading.set(true);
+      this.loadedTablesAndViews.set(false);
+      this.apiService.setEngine(engine).subscribe({
+        next: () => {
+          // this.clearSelectedListItem();
+          // this.loadTablesAndViews();
+        },
+        error: () => {
+          this.notificationService.error('Fehler beim Speichern der Datenquelle.');
+          this.listsLoading.set(false);
+        },
+      });
+    });
+
+    // this.listenToSignalREvents();
+
+
+
+
+
     // Load table data for the right pane
     this.productService.getProducts().then(d => (this.products = d));
 
