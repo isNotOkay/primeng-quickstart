@@ -1,32 +1,63 @@
-<p-table
-  [value]="products"
-  size="small"
-  [paginator]="true"
-  [rows]="10"
-  [rowsPerPageOptions]="[5,10,20,50]"
-  [showCurrentPageReport]="true"
-  currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
-  [rowTrackBy]="trackById"
-  dataKey="id"
-  showGridlines
-  [resizableColumns]="true"
-  [tableStyle]="{ 'min-width': '50rem' }">
-
-  <ng-template pTemplate="header">
-    <tr>
-      <th pResizableColumn>Code</th>
-      <th pResizableColumn>Name</th>
-      <th pResizableColumn>Category</th>
-      <th pResizableColumn class="text-right">Quantity</th>
-    </tr>
+<p-splitter
+  [style]="{ height: '100vh', width: '100%' }"
+  [panelSizes]="[25, 75]"
+  [minSizes]="[15, 10]"
+  layout="horizontal"
+>
+  <!-- Left -->
+  <ng-template #panel>
+    <div style="padding:1rem; overflow:auto">
+      <h3 style="margin:0 0 .5rem">List</h3>
+      <ul style="margin:0; padding-left:1rem">
+        <li>Accessories</li>
+        <li>Clothing</li>
+        <li>Electronics</li>
+        <li>Fitness</li>
+      </ul>
+    </div>
   </ng-template>
 
-  <ng-template pTemplate="body" let-product>
-    <tr>
-      <td>{{ product.code }}</td>
-      <td>{{ product.name }}</td>
-      <td>{{ product.category }}</td>
-      <td class="text-right">{{ product.quantity | number:'1.0-0' }}</td>
-    </tr>
+  <!-- Right: table fills panel; body scrolls, paginator at bottom -->
+  <ng-template #panel>
+    <div style="height:100%; display:flex; flex-direction:column; padding:1rem">
+      <p-table
+        [value]="products"
+        size="small"
+        dataKey="id"
+        [rowTrackBy]="rowTrackBy"
+        showGridlines
+        [resizableColumns]="true"
+        [paginator]="true"
+        paginatorPosition="bottom"
+        [rows]="10"
+        [rowsPerPageOptions]="rowsPerPageOptions"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+        [scrollable]="true"
+        scrollHeight="flex"
+        [style]="{ flex: '1 1 0' }"
+        [tableStyle]="{ 'min-width': '50rem' }"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th pResizableColumn>Code</th>
+            <th pResizableColumn>Name</th>
+            <th pResizableColumn>Category</th>
+            <th pResizableColumn style="text-align:right">Quantity</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-product>
+          <tr>
+            <td>{{ product.code }}</td>
+            <td>{{ product.name }}</td>
+            <td>{{ product.category }}</td>
+            <td style="text-align:right; font-variant-numeric: tabular-nums;">
+              {{ product.quantity | number:'1.0-0' }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
   </ng-template>
-</p-table>
+</p-splitter>
