@@ -40,7 +40,8 @@ type DynCol = { field: string; header: string };
     IconField,
     InputIcon
   ],
-  templateUrl: './app.component.html'
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
   products: any[] = [];
