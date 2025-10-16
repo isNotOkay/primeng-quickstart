@@ -1,5 +1,5 @@
 // file: src/app/app.component.ts
-import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
 import {FormControl, FormsModule} from '@angular/forms';
 
@@ -15,13 +15,15 @@ import {ProductService} from './services/productsservice';
 import {IconField} from 'primeng/iconfield';
 import {InputIcon} from 'primeng/inputicon';
 import {toSignal} from '@angular/core/rxjs-interop';
-import { EngineType } from "./enums/engine-type.enum";
+import {EngineType} from "./enums/engine-type.enum";
 import {ListItemModel} from './models/list-item.model';
 import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
 import {ApiService} from './services/api.service';
-import {SignalRService} from './services/signalr.service';
+import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
 import {NotificationService} from './services/notification.service';
-import {Subscription} from 'rxjs';
+import {forkJoin, of, Subscription} from 'rxjs';
+import {RelationApiModel} from './models/api/relation.api-model';
+import {RelationType} from './enums/relation-type.enum';
 
 // Types for grouped listbox
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
@@ -84,7 +86,6 @@ export class AppComponent implements OnInit {
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);
   private loadRowsSubscription?: Subscription;
-
 
 
   products: any[] = [];
@@ -165,8 +166,8 @@ export class AppComponent implements OnInit {
         // Set enum value as-is from the backend ("Sqlite"/"Excel")
         this.engineControl.setValue(dto.engine, {emitEvent: false});
         this.loadedTablesAndViews.set(false);
-        // this.clearSelectedListItem();
-        // this.loadTablesAndViews(); // initial load after engine arrives
+        this.clearSelectedListItem();
+        this.loadTablesAndViews(); // initial load after engine arrives
       },
       error: () => {
         this.notificationService.error('Datenquelle laden fehlgeschlagen.');
@@ -194,9 +195,6 @@ export class AppComponent implements OnInit {
     });
 
     // this.listenToSignalREvents();
-
-
-
 
 
     // Load table data for the right pane
@@ -247,5 +245,80 @@ export class AppComponent implements OnInit {
 
   isNumber(v: any) {
     return typeof v === 'number';
+  }
+
+  private clearSelectedListItem(): void {
+    this.selectedListItem.set(null);
+    this.columnNames.set([]);
+    this.rows.set([]);
+    this.totalCount.set(0);
+    this.loadingRows.set(false);
+  }
+
+  private loadTablesAndViews(createRelationEvent?: CreateOrUpdateRelationEvent): void {
+    this.listsLoading.set(true);
+
+    // Backend reads engine from settings; no engine query parameter needed
+    const tables$ = this.apiService.loadTables();
+    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
+
+    forkJoin([tables$, views$]).subscribe({
+      next: ([tablesResponse, viewsResponse]) => {
+        this.tableItems.set(this.toListItems(tablesResponse.items, RelationType.Table));
+        this.viewItems.set(this.toListItems(viewsResponse.items, RelationType.View));
+        this.loadedTablesAndViews.set(true);
+        this.listsLoading.set(false);
+
+        let listItem: ListItemModel | null = null;
+
+        if (createRelationEvent) {
+          const type = createRelationEvent.relationType === RelationType.View
+            ? RelationType.View
+            : RelationType.Table;
+          listItem = this.findInLists(type, createRelationEvent.name);
+        }
+
+        if (listItem) {
+          this.selectListItem(listItem);
+        } else {
+          this.clearSelectedListItem();
+        }
+      },
+      error: () => {
+        this.notificationService.error('Fehler beim Aktualisieren der Tabellen und Ansichten.');
+        this.listsLoading.set(false);
+      },
+    });
+  }
+
+  private findInLists(type: RelationType, id: string): ListItemModel | null {
+    const listItems = type === RelationType.Table ? this.tableItems() : this.viewItems();
+    return listItems.find(item => item.id === id) ?? null;
+  }
+
+  private selectListItem(item: ListItemModel): void {
+    this.selectedListItem.set(item);
+    this.pageIndex.set(0);
+    this.sortBy.set(null);
+    this.sortDir.set('asc');
+
+    // TODO: Fix sort.
+    /*  const sort = this.sort();
+      if (sort) {
+        sort.active = '';
+        sort.direction = '';
+      }*/
+
+    // this.updateColumnNames();
+    // this.loadTableData();
+  }
+
+  private toListItems(relations: RelationApiModel[] | null | undefined, type: RelationType): ListItemModel[] {
+    return (relations ?? []).map((relation) => ({
+      id: relation.name,
+      label: relation.name,
+      relationType: type,
+      columnNames: relation.columnNames ?? [],
+    }));
   }
 }
