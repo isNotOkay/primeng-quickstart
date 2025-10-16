@@ -3,7 +3,7 @@ import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
 import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
 
-import {TableModule} from 'primeng/table';
+import {TableModule, TableLazyLoadEvent} from 'primeng/table';
 import {SplitterModule} from 'primeng/splitter';
 import {SelectModule} from 'primeng/select';
 import {ListboxModule} from 'primeng/listbox';
@@ -11,7 +11,6 @@ import {InputTextModule} from 'primeng/inputtext';
 import {Toolbar} from 'primeng/toolbar';
 import {ButtonDirective} from 'primeng/button';
 
-import {ProductService} from './services/productsservice';
 import {IconField} from 'primeng/iconfield';
 import {InputIcon} from 'primeng/inputicon';
 import {toSignal} from '@angular/core/rxjs-interop';
@@ -21,16 +20,15 @@ import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.cons
 import {ApiService} from './services/api.service';
 import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
 import {NotificationService} from './services/notification.service';
-import {forkJoin, of, Subscription} from 'rxjs';
+import {finalize, forkJoin, of, Subscription} from 'rxjs';
 import {RelationApiModel} from './models/api/relation.api-model';
 import {RelationType} from './enums/relation-type.enum';
+import {PagedResultApiModel} from './models/api/paged-result.api-model';
+import {RowModel} from './models/row.model';
 
 // Types for grouped listbox
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
 type Group = { label: string; items: ItemOption[] };
-
-// NEW: type for dynamic table columns
-type DynCol = { field: string; header: string };
 
 @Component({
   selector: 'app-root',
@@ -57,7 +55,7 @@ type DynCol = { field: string; header: string };
 export class AppComponent implements OnInit {
   // ── Engine select (reactive) ───────────────────────────────────
   protected readonly EngineType = EngineType;
-  readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
+  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
   private readonly engineSignal = toSignal(this.engineControl.valueChanges, {
     initialValue: this.engineControl.value,
   });
@@ -83,19 +81,15 @@ export class AppComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private loadRowsSubscription?: Subscription;
 
-  // Table data (right pane demo)
-  products: any[] = [];
-  dynamicColumns: DynCol[] = [];
-
   // ── Datenquelle select: values match backend ("Sqlite" | "Excel") ─
   dataSources: Array<{ label: string; value: EngineType }> = [
-    { label: 'SQLite', value: EngineType.Sqlite },
-    { label: 'Excel',  value: EngineType.Excel  }
+    {label: 'SQLite', value: EngineType.Sqlite},
+    {label: 'Excel', value: EngineType.Excel}
   ];
 
   // ── Listbox (reactive) ─────────────────────────────────────────
   // The listbox value encodes type+id like "table|Jet Journal Klein"
-  readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
+  readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
 
   // Grouped data for the listbox (rebuilt from API items)
   private allGroups: Group[] = [];
@@ -104,14 +98,14 @@ export class AppComponent implements OnInit {
   // External filter
   listFilter = '';
 
-  constructor(private productService: ProductService) {}
+  constructor() {}
 
   ngOnInit() {
     // Load persisted engine
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
       next: (dto) => {
-        this.engineControl.setValue(dto.engine, { emitEvent: false });
+        this.engineControl.setValue(dto.engine, {emitEvent: false});
         this.loadedTablesAndViews.set(false);
         this.clearSelectedListItem();
         this.loadTablesAndViews(); // initial load after engine arrives
@@ -151,9 +145,6 @@ export class AppComponent implements OnInit {
         this.selectListItem(item);
       }
     });
-
-    // Demo data (right pane)
-    this.productService.getProducts().then(d => (this.products = d));
   }
 
   protected onDownload(): void {
@@ -184,7 +175,6 @@ export class AppComponent implements OnInit {
 
   // ── Build options from API data and apply current filter ───────
   private rebuildGroupsFromApi(): void {
-    // Map API list items to listbox options (value encodes type + id)
     const tables: ItemOption[] = this.tableItems().map(it => ({
       label: it.label,
       value: this.makeValue(RelationType.Table, it.id)
@@ -196,11 +186,10 @@ export class AppComponent implements OnInit {
     }));
 
     this.allGroups = [
-      { label: 'Tabellen', items: tables },
-      { label: 'Sichten',  items: views  }
+      {label: 'Tabellen', items: tables},
+      {label: 'Sichten', items: views}
     ];
 
-    // Re-apply current filter
     this.applyFilter(this.listFilter);
   }
 
@@ -214,13 +203,12 @@ export class AppComponent implements OnInit {
 
       const items = matched.length
         ? matched
-        : [{ label: 'Keine Treffer', value: null, disabled: true, __placeholder: true }];
+        : [{label: 'Keine Treffer', value: null, disabled: true, __placeholder: true}];
 
-      return { label: g.label, items };
+      return {label: g.label, items};
     });
   }
 
-  // Used by p-listbox to prevent selecting placeholders/disabled items
   isOptionDisabled = (opt: any) => !!opt?.disabled || !!opt?.__placeholder;
 
   private normalize(s: string) {
@@ -235,7 +223,7 @@ export class AppComponent implements OnInit {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();
-    const views$  = this.isExcel() ? of({ items: [] as RelationApiModel[] }) : this.apiService.loadViews();
+    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
 
     forkJoin([tables$, views$]).subscribe({
       next: ([tablesResponse, viewsResponse]) => {
@@ -244,10 +232,8 @@ export class AppComponent implements OnInit {
         this.loadedTablesAndViews.set(true);
         this.listsLoading.set(false);
 
-        // Rebuild listbox groups from fresh data
         this.rebuildGroupsFromApi();
 
-        // Optional: preselect an item from a SignalR-created relation
         let listItem: ListItemModel | null = null;
         if (createRelationEvent) {
           const type = createRelationEvent.relationType === RelationType.View
@@ -258,11 +244,10 @@ export class AppComponent implements OnInit {
 
         if (listItem) {
           this.selectListItem(listItem);
-          // reflect selection in the control
-          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), { emitEvent: false });
+          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), {emitEvent: false});
         } else {
           this.clearSelectedListItem();
-          this.listControl.setValue(null, { emitEvent: false });
+          this.listControl.setValue(null, {emitEvent: false});
         }
       },
       error: () => {
@@ -289,9 +274,16 @@ export class AppComponent implements OnInit {
   private selectListItem(item: ListItemModel): void {
     this.selectedListItem.set(item);
     this.pageIndex.set(0);
+    this.pageSize.set(DEFAULT_PAGE_SIZE);
     this.sortBy.set(null);
     this.sortDir.set('asc');
-    // If you want to kick off row loading here, call your rows API.
+
+    this.updateColumnNames();
+    this.loadTableData();
+  }
+
+  private updateColumnNames(): void {
+    this.columnNames.set(this.selectedListItem()?.columnNames ?? []);
   }
 
   private clearSelectedListItem(): void {
@@ -302,6 +294,50 @@ export class AppComponent implements OnInit {
     this.loadingRows.set(false);
   }
 
+  private loadTableData(): void {
+    const listItem = this.selectedListItem();
+    if (!listItem) return;
+
+    this.loadingRows.set(true);
+    this.loadRowsSubscription?.unsubscribe();
+
+    this.loadRowsSubscription = this.apiService
+      .loadTableData(
+        listItem.relationType,
+        listItem.id,
+        this.pageIndex(),
+        this.pageSize(),
+        this.sortBy(),
+        this.sortDir()
+      )
+      .pipe(finalize(() => this.loadingRows.set(false)))
+      .subscribe({
+        next: (result: PagedResultApiModel<RowModel>) => {
+          this.rows.set(result.items ?? []);
+          this.totalCount.set((result.total as number) ?? 0);
+        },
+        error: () => {
+          this.rows.set([]);
+          this.totalCount.set(0);
+          this.notificationService.error('Fehler beim Laden der Daten.');
+        },
+      });
+  }
+
+  // PrimeNG lazy load handler (paging + sorting)
+  onLazyLoad(event: TableLazyLoadEvent) {
+    const newSize = event.rows ?? this.pageSize();
+    const newFirst = event.first ?? 0;
+    const newIndex = Math.floor(newFirst / newSize);
+
+    this.pageSize.set(newSize);
+    this.pageIndex.set(newIndex);
+    this.sortBy.set((event.sortField as string) ?? null);
+    this.sortDir.set(event.sortOrder === 1 ? 'asc' : 'desc');
+
+    this.loadTableData();
+  }
+
   // ── Helpers for encoded selection values ───────────────────────
   private makeValue(type: RelationType, id: string) {
     return `${type}|${id}`;
@@ -309,14 +345,15 @@ export class AppComponent implements OnInit {
 
   private parseSelection(v: string): { type: RelationType; id: string } {
     const [typeStr, ...rest] = v.split('|');
-    const id = rest.join('|'); // allow '|' in names just in case
+    const id = rest.join('|');
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
-    return { type, id };
+    return {type, id};
   }
 
   // ── Table helpers (right pane) ─────────────────────────────────
   rowTrackBy(i: number, p: any) {
-    return p.id ?? p.code ?? i;
+    // try common keys; otherwise index
+    return (p?.id ?? p?.Id ?? p?.ID ?? i);
   }
 
   isNumber(v: any) {
