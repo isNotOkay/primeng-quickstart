@@ -1,0 +1,31 @@
+/*
+!* app.component.scss *!
+:host ::ng-deep .left-listbox .p-listbox-option {           !* items *!
+  padding-left: 1.25rem;
+}
+
+:host ::ng-deep .left-listbox .p-listbox-option-group {     !* group headers *!
+  font-weight: 700;
+  color: var(--p-primary-color);
+  background: var(--p-surface-100);
+  padding: .375rem .75rem;
+  margin: .25rem .25rem .25rem 0;
+  border-radius: .5rem;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+*/
+
+
+/* app.component.scss */
+.left-listbox {
+  /* Indent regular options */
+  --p-listbox-option-padding: .5rem 1rem .5rem 1.25rem;
+
+  /* Stronger contrast for group headers */
+  --p-listbox-option-group-font-weight: 700;
+  --p-listbox-option-group-color: var(--p-primary-color);
+  --p-listbox-option-group-background: var(--p-surface-100);
+  --p-listbox-option-group-padding: .375rem .75rem;
+  --p-listbox-option-group-border-radius: .5rem;
+}

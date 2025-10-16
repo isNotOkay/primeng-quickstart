@@ -7,10 +7,17 @@ import { TableModule } from 'primeng/table';
 import { SplitterModule } from 'primeng/splitter';
 import { SelectModule } from 'primeng/select';
 import { ListboxModule } from 'primeng/listbox';
+import { InputTextModule } from 'primeng/inputtext';
 import { Toolbar } from 'primeng/toolbar';
 import { ButtonDirective } from 'primeng/button';
 
 import { ProductService } from './service/productsservice';
+import {IconField} from 'primeng/iconfield';
+import {InputIcon} from 'primeng/inputicon';
+
+// Types for grouped listbox
+type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
+type Group = { label: string; items: ItemOption[] };
 
 @Component({
   selector: 'app-root',
@@ -24,15 +31,18 @@ import { ProductService } from './service/productsservice';
     SplitterModule,
     SelectModule,
     ListboxModule,
+    InputTextModule,
     Toolbar,
-    ButtonDirective
+    ButtonDirective,
+    IconField,
+    InputIcon
   ],
   templateUrl: './app.component.html'
 })
 export class AppComponent implements OnInit {
   products: any[] = [];
 
-  // Datenquelle Select (top-left)
+  // Toolbar: Datenquelle select
   dataSources = [
     { label: 'Alle', value: 'all' },
     { label: 'Lokal', value: 'local' },
@@ -40,8 +50,8 @@ export class AppComponent implements OnInit {
   ];
   selectedDataSource: string = 'all';
 
-  // Options (20 each)
-  tableOptions = [
+  // Left panel options (20 each)
+  tableOptions: ItemOption[] = [
     { label: 'Products', value: 'Products' },
     { label: 'Orders', value: 'Orders' },
     { label: 'Customers', value: 'Customers' },
@@ -64,7 +74,7 @@ export class AppComponent implements OnInit {
     { label: 'Warehouses', value: 'Warehouses' }
   ];
 
-  viewOptions = [
+  viewOptions: ItemOption[] = [
     { label: 'Top Sellers', value: 'Top Sellers' },
     { label: 'Low Stock', value: 'Low Stock' },
     { label: 'Recent Orders', value: 'Recent Orders' },
@@ -87,24 +97,55 @@ export class AppComponent implements OnInit {
     { label: 'Forecasted Demand', value: 'Forecasted Demand' }
   ];
 
-  // Grouped Listbox options
-  groupedOptions: Array<{ label: string; items: { label: string; value: string }[] }> = [];
+  // Grouped data for the listbox
+  private allGroups: Group[] = [];
+  groupedOptions: Group[] = [];
 
-  // Single selection from grouped list
+  // Selection + external filter
   selectedItem?: string;
+  listFilter = '';
 
   constructor(private productService: ProductService) {}
 
   ngOnInit() {
+    // Load table data for the right pane
     this.productService.getProducts().then(d => (this.products = d));
 
-    // Build grouped options for the listbox
-    this.groupedOptions = [
+    // Initialize groups
+    this.allGroups = [
       { label: 'Tabellen', items: this.tableOptions },
-      { label: 'Sichten', items: this.viewOptions }
+      { label: 'Sichten',  items: this.viewOptions }
     ];
+
+    // Initial (no) filter
+    this.applyFilter('');
   }
 
+  // Keep groups visible; when a group has no matches, insert a disabled placeholder row
+  applyFilter(query: string) {
+    const q = this.normalize(query);
+    this.groupedOptions = this.allGroups.map(g => {
+      const matched = q
+        ? g.items.filter(it => this.normalize(it.label).includes(q))
+        : g.items;
+
+      const items = matched.length
+        ? matched
+        : [{ label: 'Keine Treffer', value: null, disabled: true, __placeholder: true }];
+
+      return { label: g.label, items };
+    });
+  }
+
+  private normalize(s: string) {
+    // case-insensitive, diacritic-insensitive search
+    return (s || '')
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // strip combining marks
+  }
+
+  // For the PrimeNG table on the right
   rowTrackBy(i: number, p: any) {
     return p.id ?? p.code ?? i;
   }
