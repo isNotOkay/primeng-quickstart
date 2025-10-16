@@ -12,8 +12,8 @@ import { Toolbar } from 'primeng/toolbar';
 import { ButtonDirective } from 'primeng/button';
 
 import { ProductService } from './service/productsservice';
-import {IconField} from 'primeng/iconfield';
-import {InputIcon} from 'primeng/inputicon';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
 
 // Types for grouped listbox
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
@@ -136,6 +136,9 @@ export class AppComponent implements OnInit {
       return { label: g.label, items };
     });
   }
+
+  // Used by p-listbox to prevent selecting placeholders/disabled items
+  isOptionDisabled = (opt: any) => !!opt?.disabled || !!opt?.__placeholder;
 
   private normalize(s: string) {
     // case-insensitive, diacritic-insensitive search
