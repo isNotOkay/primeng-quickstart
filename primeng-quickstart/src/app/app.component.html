@@ -1,11 +1,24 @@
+<!-- file: src/app/app.component.html -->
 <!-- Full-page flex column: toolbar on top, splitter fills the rest -->
 <div style="height:100vh; width:100%; display:flex; flex-direction:column">
 
   <!-- Global toolbar -->
   <p-toolbar>
     <ng-template pTemplate="start">
-      <span style="font-weight:600">Products</span>
+      <!-- Removed "Products" title and added Select with label -->
+      <div class="p-field" style="display:flex; align-items:center; gap:.5rem">
+        <p-select
+          inputId="dataSource"
+          [options]="dataSources"
+          [(ngModel)]="selectedDataSource"
+          optionLabel="label"
+          optionValue="value"
+          styleClass="w-16rem"
+          placeholder="Datenquelle auswählen">
+        </p-select>
+      </div>
     </ng-template>
+
     <ng-template pTemplate="end">
       <button pButton type="button" icon="pi pi-refresh" label="Refresh"></button>
       <button pButton type="button" icon="pi pi-download" label="Export" class="p-button-outlined"
