@@ -19,6 +19,9 @@ import { InputIcon } from 'primeng/inputicon';
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
 type Group = { label: string; items: ItemOption[] };
 
+// NEW: type for dynamic table columns
+type DynCol = { field: string; header: string };
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -41,6 +44,9 @@ type Group = { label: string; items: ItemOption[] };
 })
 export class AppComponent implements OnInit {
   products: any[] = [];
+
+  // NEW: dynamic columns container
+  dynamicColumns: DynCol[] = [];
 
   // Toolbar: Datenquelle select
   dataSources = [
@@ -150,5 +156,33 @@ export class AppComponent implements OnInit {
   // For the PrimeNG table on the right
   rowTrackBy(i: number, p: any) {
     return p.id ?? p.code ?? i;
+  }
+
+  // === NEW: Add Column logic ===
+  addColumn() {
+    const header = this.makeRandomLabel();              // random visible name
+    const field  = this.makeRandomFieldName(header);    // internal field key
+
+    this.dynamicColumns = [...this.dynamicColumns, { field, header }];
+
+    // Add a random value for each row (number so sorting works nicely)
+    this.products = this.products.map(p => ({
+      ...p,
+      [field]: Math.floor(Math.random() * 100)
+    }));
+  }
+
+  isNumber(v: any) {
+    return typeof v === 'number';
+  }
+
+  private makeRandomLabel(): string {
+    const parts = ['Alpha','Beta','Gamma','Delta','Sigma','Omega','Zeta','Kappa','Tau','Xi'];
+    return `Col ${parts[Math.floor(Math.random() * parts.length)]}-${Math.floor(Math.random() * 900 + 100)}`;
+  }
+
+  private makeRandomFieldName(_label: string): string {
+    // simple unique-ish key for the object property
+    return 'col_' + Math.random().toString(36).slice(2, 8);
   }
 }

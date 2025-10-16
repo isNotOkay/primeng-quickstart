@@ -19,6 +19,10 @@
     </ng-template>
 
     <ng-template pTemplate="end">
+      <!-- NEW: Add Column button -->
+      <button pButton type="button" icon="pi pi-plus" label="Add Column"
+              class="p-button-outlined" (click)="addColumn()"></button>
+
       <button pButton type="button" icon="pi pi-download" label="Download" class="p-button-outlined"
               style="margin-left:.5rem"></button>
     </ng-template>
@@ -96,7 +100,7 @@
         [rowTrackBy]="rowTrackBy"
         showGridlines
         [resizableColumns]="true"
-        columnResizeMode="fit"
+        columnResizeMode="expand"
         [paginator]="true"
         paginatorPosition="bottom"
         [rows]="25"
@@ -105,7 +109,7 @@
         [scrollable]="true"
         scrollHeight="flex"
         [style]="{ flex: '1 1 0' }"
-        [tableStyle]="{ 'min-width': '50rem' }"
+        [tableStyle]="{ 'min-width': '50rem', 'width': 'max-content' }"
         sortMode="single">
 
         <ng-template pTemplate="header">
@@ -134,6 +138,15 @@
                 <p-sortIcon field="quantity"></p-sortIcon>
               </div>
             </th>
+
+            @for (col of dynamicColumns; track col.field) {
+              <th pResizableColumn [pSortableColumn]="col.field" style="width:20%">
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  {{ col.header }}
+                  <p-sortIcon [field]="col.field"></p-sortIcon>
+                </div>
+              </th>
+            }
           </tr>
         </ng-template>
 
@@ -145,6 +158,14 @@
             <td style="text-align:right; font-variant-numeric: tabular-nums;">
               {{ product.quantity | number:'1.0-0' }}
             </td>
+
+            @for (col of dynamicColumns; track col.field) {
+              <td
+                [style.text-align]="isNumber(product[col.field]) ? 'right' : 'left'"
+                style="font-variant-numeric: tabular-nums;">
+                {{ product[col.field] }}
+              </td>
+            }
           </tr>
         </ng-template>
       </p-table>
