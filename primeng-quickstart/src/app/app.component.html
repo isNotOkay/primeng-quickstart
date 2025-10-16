@@ -1,12 +1,8 @@
 <!-- file: src/app/app.component.html -->
-<!-- Full-page flex column: toolbar on top, splitter fills the rest -->
 <div style="height:100vh; width:100%; display:flex; flex-direction:column">
-
-  <!-- Global toolbar -->
   <p-toolbar>
     <ng-template pTemplate="start">
-      <!-- Removed "Products" title and added Select with label -->
-      <div class="p-field" style="display:flex; align-items:center; gap:.5rem">
+      <div style="display:flex; align-items:center; gap:.5rem">
         <p-select
           inputId="dataSource"
           [options]="dataSources"
@@ -25,7 +21,6 @@
     </ng-template>
   </p-toolbar>
 
-  <!-- Splitter takes remaining height -->
   <p-splitter
     [style]="{ 'flex-grow': 1, 'overflow': 'hidden', width: '100%' }"
     [panelSizes]="[25, 75]"
@@ -36,60 +31,32 @@
     <ng-template #panel>
       <div
         style="
-      height:100%;
-      padding:1rem;
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      gap:1rem;
-    "
+          height:100%;
+          display:flex;
+          flex-direction:column;
+        "
       >
-        <!-- Tabellen (top 50%) -->
         <div
           style="
-        flex:1 1 0;
-        min-height:0;
-        border:1px solid var(--surface-border);
-        border-radius:12px;
-        display:flex;
-        flex-direction:column;
-        background:var(--surface-card);
-      "
+            flex:1 1 0;
+            min-height:0;
+            display:flex;
+          "
         >
-          <div style="padding:.5rem .75rem; font-weight:600; border-bottom:1px solid var(--surface-border)">
-            Tabellen
-          </div>
-          <div style="flex:1 1 0; min-height:0; overflow:auto; padding:.5rem .75rem">
-            <ul style="margin:0; padding-left:1rem">
-              @for (t of tables; track t) {
-                <li>{{ t }}</li>
-              }
-            </ul>
-          </div>
-        </div>
-
-        <!-- Sichten (bottom 50%) -->
-        <div
-          style="
-        flex:1 1 0;
-        min-height:0;
-        border:1px solid var(--surface-border);
-        border-radius:12px;
-        display:flex;
-        flex-direction:column;
-        background:var(--surface-card);
-      "
-        >
-          <div style="padding:.5rem .75rem; font-weight:600; border-bottom:1px solid var(--surface-border)">
-            Sichten
-          </div>
-          <div style="flex:1 1 0; min-height:0; overflow:auto; padding:.5rem .75rem">
-            <ul style="margin:0; padding-left:1rem">
-              @for (v of views; track v) {
-                <li>{{ v }}</li>
-              }
-            </ul>
-          </div>
+          <p-listbox
+            [style]="{ width:'100%', border:'none' }"
+            [group]="true"
+            [options]="groupedOptions"
+            optionGroupLabel="label"
+            optionGroupChildren="items"
+            [(ngModel)]="selectedItem"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="false"
+            filterPlaceholder="Suchen…"
+            styleClass="left-listbox"
+            [listStyle]="{ overflow: 'auto', 'max-height': '100%' }"
+          ></p-listbox>
         </div>
       </div>
     </ng-template>
@@ -103,7 +70,7 @@
         [rowTrackBy]="rowTrackBy"
         showGridlines
         [resizableColumns]="true"
-        columnResizeMode="fit"
+        columnResizeMode="expand"
         [paginator]="true"
         paginatorPosition="bottom"
         [rows]="25"
