@@ -51,13 +51,13 @@
           </p-iconfield>
         </div>
 
-        <!-- Grouped Listbox filling panel height; internal scroll -->
+        <!-- Grouped Listbox fed by API; internal scroll -->
         <p-listbox
           [group]="true"
           [options]="groupedOptions"
           optionGroupLabel="label"
           optionGroupChildren="items"
-          [(ngModel)]="selectedItem"
+          [formControl]="listControl"
           optionLabel="label"
           optionValue="value"
           [optionDisabled]="isOptionDisabled"
