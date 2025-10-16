@@ -1,7 +1,7 @@
 // file: src/app/app.component.ts
 import {Component, computed, inject, OnInit, signal} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
-import {FormControl, FormsModule} from '@angular/forms';
+import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
 
 import {TableModule} from 'primeng/table';
 import {SplitterModule} from 'primeng/splitter';
@@ -38,7 +38,8 @@ type DynCol = { field: string; header: string };
   imports: [
     // Angular
     DecimalPipe,
-    FormsModule,
+    FormsModule,            // still used for listbox filter & selection
+    ReactiveFormsModule,    // <-- needed for [formControl] with p-select
     // PrimeNG
     TableModule,
     SplitterModule,
@@ -87,18 +88,16 @@ export class AppComponent implements OnInit {
   private readonly notificationService = inject(NotificationService);
   private loadRowsSubscription?: Subscription;
 
-
   products: any[] = [];
 
   // NEW: dynamic columns container
   dynamicColumns: DynCol[] = [];
 
-  // Toolbar: Datenquelle select
-  dataSources = [
-    {label: 'SQLite', value: 'sqlite'},
-    {label: 'Excel', value: 'excel'}
+  // Toolbar: Datenquelle select (values must match backend: "Sqlite" | "Excel")
+  dataSources: Array<{ label: string; value: EngineType }> = [
+    { label: 'SQLite', value: EngineType.Sqlite },
+    { label: 'Excel',  value: EngineType.Excel }
   ];
-  selectedDataSource: string = 'all';
 
   // Left panel options (20 each)
   tableOptions: ItemOption[] = [
@@ -155,8 +154,7 @@ export class AppComponent implements OnInit {
   selectedItem?: string;
   listFilter = '';
 
-  constructor(private productService: ProductService) {
-  }
+  constructor(private productService: ProductService) {}
 
   ngOnInit() {
     // 1) Load persisted engine; keep select empty until this completes
@@ -172,8 +170,6 @@ export class AppComponent implements OnInit {
       error: () => {
         this.notificationService.error('Datenquelle laden fehlgeschlagen.');
         this.loadedTablesAndViews.set(false);
-        // this.clearSelectedListItem();
-        // this.loadTablesAndViews();
       },
     });
 
@@ -184,6 +180,7 @@ export class AppComponent implements OnInit {
       this.loadedTablesAndViews.set(false);
       this.apiService.setEngine(engine).subscribe({
         next: () => {
+          // Optionally reload lists/data when engine changes
           // this.clearSelectedListItem();
           // this.loadTablesAndViews();
         },
@@ -193,9 +190,6 @@ export class AppComponent implements OnInit {
         },
       });
     });
-
-    // this.listenToSignalREvents();
-
 
     // Load table data for the right pane
     this.productService.getProducts().then(d => (this.products = d));
@@ -241,7 +235,6 @@ export class AppComponent implements OnInit {
   rowTrackBy(i: number, p: any) {
     return p.id ?? p.code ?? i;
   }
-
 
   isNumber(v: any) {
     return typeof v === 'number';
@@ -301,16 +294,6 @@ export class AppComponent implements OnInit {
     this.pageIndex.set(0);
     this.sortBy.set(null);
     this.sortDir.set('asc');
-
-    // TODO: Fix sort.
-    /*  const sort = this.sort();
-      if (sort) {
-        sort.active = '';
-        sort.direction = '';
-      }*/
-
-    // this.updateColumnNames();
-    // this.loadTableData();
   }
 
   private toListItems(relations: RelationApiModel[] | null | undefined, type: RelationType): ListItemModel[] {

@@ -9,7 +9,7 @@
         <p-select
           inputId="dataSource"
           [options]="dataSources"
-          [(ngModel)]="selectedDataSource"
+          [formControl]="engineControl"
           optionLabel="label"
           optionValue="value"
           styleClass="w-16rem"
