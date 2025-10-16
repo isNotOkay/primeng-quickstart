@@ -3,7 +3,9 @@
 
 
 html, body {
-  margin: 0;
+  height: 100%;
+  margin: 0;          /* remove UA default 8px margin */
+  overflow: hidden;   /* only the table should scroll */
 }
 
 html {
@@ -23,3 +25,4 @@ p-toolbar {
 p-splitterpanel {
   border: 0 !important;
 }
+
