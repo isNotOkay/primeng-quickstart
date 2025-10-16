@@ -156,6 +156,32 @@ export class AppComponent implements OnInit {
     this.productService.getProducts().then(d => (this.products = d));
   }
 
+  protected onDownload(): void {
+    const engine = this.engineControl.value;
+    if (!engine) {
+      this.notificationService.error('Bitte warten Sie, bis die Datenquelle geladen wurde.');
+      return;
+    }
+    this.apiService.downloadEngineFile(engine).subscribe({
+      next: (res) => {
+        const blob = res.body!;
+        const cd = res.headers.get('Content-Disposition') || '';
+        const nameMatch = /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i.exec(cd);
+        const fileName = nameMatch?.[1] ?? (engine === EngineType.Excel ? 'workbook.xlsx' : 'database.db');
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.notificationService.error('Download fehlgeschlagen.')
+    });
+  }
+
   // ── Build options from API data and apply current filter ───────
   private rebuildGroupsFromApi(): void {
     // Map API list items to listbox options (value encodes type + id)
