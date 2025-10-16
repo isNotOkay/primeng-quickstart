@@ -54,6 +54,7 @@
         [rowTrackBy]="rowTrackBy"
         showGridlines
         [resizableColumns]="true"
+        columnResizeMode="fit"
         [paginator]="true"
         paginatorPosition="bottom"
         [rows]="25"
@@ -67,25 +68,25 @@
 
         <ng-template pTemplate="header">
           <tr>
-            <th pSortableColumn="code" style="width:20%">
+            <th pResizableColumn pSortableColumn="code" style="width:20%">
               <div style="display:flex;align-items:center;gap:.5rem">
                 Code
                 <p-sortIcon field="code"></p-sortIcon>
               </div>
             </th>
-            <th pSortableColumn="name" style="width:20%">
+            <th pResizableColumn pSortableColumn="name" style="width:20%">
               <div style="display:flex;align-items:center;gap:.5rem">
                 Name
                 <p-sortIcon field="name"></p-sortIcon>
               </div>
             </th>
-            <th pSortableColumn="category" style="width:20%">
+            <th pResizableColumn pSortableColumn="category" style="width:20%">
               <div style="display:flex;align-items:center;gap:.5rem">
                 Category
                 <p-sortIcon field="category"></p-sortIcon>
               </div>
             </th>
-            <th pSortableColumn="quantity" style="width:20%; text-align:right">
+            <th pResizableColumn pSortableColumn="quantity" style="width:20%; text-align:right">
               <div style="display:flex;align-items:center;gap:.5rem; justify-content:flex-end">
                 Quantity
                 <p-sortIcon field="quantity"></p-sortIcon>
