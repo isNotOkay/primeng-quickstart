@@ -44,9 +44,8 @@ export class AppComponent implements OnInit {
 
   // Toolbar: Datenquelle select
   dataSources = [
-    { label: 'Alle', value: 'all' },
-    { label: 'Lokal', value: 'local' },
-    { label: 'Remote', value: 'remote' }
+    { label: 'SQLite', value: 'sqlite' },
+    { label: 'Excel', value: 'excel' }
   ];
   selectedDataSource: string = 'all';
 
