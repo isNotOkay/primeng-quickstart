@@ -1,7 +1,7 @@
 // file: src/app/app.component.ts
-import {Component, OnInit} from '@angular/core';
+import {Component, computed, inject, OnInit, signal, viewChild} from '@angular/core';
 import {DecimalPipe} from '@angular/common';
-import {FormsModule} from '@angular/forms';
+import {FormControl, FormsModule} from '@angular/forms';
 
 import {TableModule} from 'primeng/table';
 import {SplitterModule} from 'primeng/splitter';
@@ -14,6 +14,14 @@ import {ButtonDirective} from 'primeng/button';
 import {ProductService} from './services/productsservice';
 import {IconField} from 'primeng/iconfield';
 import {InputIcon} from 'primeng/inputicon';
+import {toSignal} from '@angular/core/rxjs-interop';
+import { EngineType } from "./enums/engine-type.enum";
+import {ListItemModel} from './models/list-item.model';
+import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
+import {ApiService} from './services/api.service';
+import {SignalRService} from './services/signalr.service';
+import {NotificationService} from './services/notification.service';
+import {Subscription} from 'rxjs';
 
 // Types for grouped listbox
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
@@ -44,6 +52,41 @@ type DynCol = { field: string; header: string };
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
+  // expose enum to template
+  protected readonly EngineType = EngineType;
+
+  // Form control keeps exact server casing ("Sqlite" | "Excel")
+  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
+
+  // Reactive engine signal driven by the form control
+  private readonly engineSignal = toSignal(this.engineControl.valueChanges, {
+    initialValue: this.engineControl.value, // null until initial GET returns
+  });
+
+  protected readonly isExcel = computed(() => this.engineSignal() === EngineType.Excel);
+
+  // Signals
+  protected readonly listsLoading = signal(true);
+  protected readonly loadingRows = signal(true);
+  protected readonly loadedTablesAndViews = signal(false);
+  protected readonly tableItems = signal<ListItemModel[]>([]);
+  protected readonly viewItems = signal<ListItemModel[]>([]);
+  protected readonly selectedListItem = signal<ListItemModel | null>(null);
+  protected readonly columnNames = signal<string[]>([]);
+  protected readonly rows = signal<Record<string, unknown>[]>([]);
+  protected readonly totalCount = signal(0);
+  protected readonly pageIndex = signal(DEFAULT_PAGE_INDEX);
+  protected readonly pageSize = signal(DEFAULT_PAGE_SIZE);
+  protected readonly sortBy = signal<string | null>(null);
+  protected readonly sortDir = signal<'asc' | 'desc'>('asc');
+
+  private readonly apiService = inject(ApiService);
+  private readonly signalRService = inject(SignalRService);
+  private readonly notificationService = inject(NotificationService);
+  private loadRowsSubscription?: Subscription;
+
+
+
   products: any[] = [];
 
   // NEW: dynamic columns container

@@ -1,9 +1,10 @@
-import {inject, Injectable} from '@angular/core';
-import {MatSnackBar} from '@angular/material/snack-bar';
+import {Injectable} from '@angular/core';
+
+// TODO: Migrate.
 
 @Injectable({providedIn: 'root'})
 export class NotificationService {
-  private snackBar = inject(MatSnackBar);
+  // private snackBar = inject(MatSnackBar);
 
   info(message: string): void {
     this.show(message);
@@ -14,6 +15,6 @@ export class NotificationService {
   }
 
   private show(message: string, duration = 6000): void {
-    this.snackBar.open(message, undefined, {duration, verticalPosition: 'bottom', horizontalPosition: 'center'});
+    // this.snackBar.open(message, undefined, {duration, verticalPosition: 'bottom', horizontalPosition: 'center'});
   }
 }
