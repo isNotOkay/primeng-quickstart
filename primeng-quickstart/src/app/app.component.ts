@@ -3,11 +3,13 @@ import {TableModule} from 'primeng/table';
 import {SplitterModule} from 'primeng/splitter';
 import {DecimalPipe} from '@angular/common';
 import {ProductService} from './service/productsservice';
+import {Toolbar} from 'primeng/toolbar';
+import {ButtonDirective} from 'primeng/button';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TableModule, SplitterModule, DecimalPipe],
+  imports: [TableModule, SplitterModule, DecimalPipe, Toolbar, ButtonDirective],
   templateUrl: './app.component.html'
 })
 export class AppComponent implements OnInit {

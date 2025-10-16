@@ -1,81 +1,98 @@
-<p-splitter
-  [style]="{ height: '100vh', width: '100%' }"
-  [panelSizes]="[25, 75]"
-  [minSizes]="[15, 10]"
-  layout="horizontal">
+<!-- Full-page flex column: toolbar on top, splitter fills the rest -->
+<div style="height:100vh; width:100%; display:flex; flex-direction:column">
 
-  <!-- Left panel -->
-  <ng-template #panel>
-    <div style="padding:1rem; overflow:auto">
-      <h3 style="margin:0 0 .5rem">List</h3>
-      <ul style="margin:0; padding-left:1rem">
-        <li>Accessories</li>
-        <li>Clothing</li>
-        <li>Electronics</li>
-        <li>Fitness</li>
-      </ul>
-    </div>
-  </ng-template>
+  <!-- Global toolbar -->
+  <p-toolbar>
+    <ng-template pTemplate="start">
+      <span style="font-weight:600">Products</span>
+    </ng-template>
+    <ng-template pTemplate="end">
+      <button pButton type="button" icon="pi pi-refresh" label="Refresh"></button>
+      <button pButton type="button" icon="pi pi-download" label="Export" class="p-button-outlined"
+              style="margin-left:.5rem"></button>
+    </ng-template>
+  </p-toolbar>
 
-  <!-- Right panel -->
-  <ng-template #panel>
-    <p-table
-      [value]="products"
-      size="small"
-      dataKey="id"
-      [rowTrackBy]="rowTrackBy"
-      showGridlines
-      [resizableColumns]="true"
-      [paginator]="true"
-      paginatorPosition="bottom"
-      [rows]="25"
-      [showCurrentPageReport]="true"
-      currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
-      [scrollable]="true"
-      scrollHeight="flex"
-      [style]="{ flex: '1 1 0' }"
-      [tableStyle]="{ 'min-width': '50rem' }"
-      sortMode="single">
+  <!-- Splitter takes remaining height -->
+  <p-splitter
+    [style]="{ 'flex-grow': 1, 'overflow': 'hidden', width: '100%' }"
+    [panelSizes]="[25, 75]"
+    [minSizes]="[15, 10]"
+    layout="horizontal">
 
-      <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="code" style="width:20%">
-            <div style="display:flex;align-items:center;gap:.5rem">
-              Code
-              <p-sortIcon field="code"></p-sortIcon>
-            </div>
-          </th>
-          <th pSortableColumn="name" style="width:20%">
-            <div style="display:flex;align-items:center;gap:.5rem">
-              Name
-              <p-sortIcon field="name"></p-sortIcon>
-            </div>
-          </th>
-          <th pSortableColumn="category" style="width:20%">
-            <div style="display:flex;align-items:center;gap:.5rem">
-              Category
-              <p-sortIcon field="category"></p-sortIcon>
-            </div>
-          </th>
-          <th pSortableColumn="quantity" style="width:20%; text-align:right">
-            <div style="display:flex;align-items:center;gap:.5rem; justify-content:flex-end">
-              Quantity
-              <p-sortIcon field="quantity"></p-sortIcon>
-            </div>
-          </th>
-        </tr>
-      </ng-template>
+    <!-- Left panel -->
+    <ng-template #panel>
+      <div style="padding:1rem; overflow:auto; height:100%">
+        <h3 style="margin:0 0 .5rem">List</h3>
+        <ul style="margin:0; padding-left:1rem">
+          <li>Accessories</li>
+          <li>Clothing</li>
+          <li>Electronics</li>
+          <li>Fitness</li>
+        </ul>
+      </div>
+    </ng-template>
 
-      <ng-template pTemplate="body" let-product>
-        <tr>
-          <td>{{ product.code }}</td>
-          <td>{{ product.name }}</td>
-          <td>{{ product.category }}</td>
-          <td style="text-align:right; font-variant-numeric: tabular-nums;">
-            {{ product.quantity | number:'1.0-0' }}
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
-  </ng-template>
-</p-splitter>
+    <!-- Right panel -->
+    <ng-template #panel>
+      <p-table
+        [value]="products"
+        size="small"
+        dataKey="id"
+        [rowTrackBy]="rowTrackBy"
+        showGridlines
+        [resizableColumns]="true"
+        [paginator]="true"
+        paginatorPosition="bottom"
+        [rows]="25"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+        [scrollable]="true"
+        scrollHeight="flex"
+        [style]="{ flex: '1 1 0' }"
+        [tableStyle]="{ 'min-width': '50rem' }"
+        sortMode="single">
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="code" style="width:20%">
+              <div style="display:flex;align-items:center;gap:.5rem">
+                Code
+                <p-sortIcon field="code"></p-sortIcon>
+              </div>
+            </th>
+            <th pSortableColumn="name" style="width:20%">
+              <div style="display:flex;align-items:center;gap:.5rem">
+                Name
+                <p-sortIcon field="name"></p-sortIcon>
+              </div>
+            </th>
+            <th pSortableColumn="category" style="width:20%">
+              <div style="display:flex;align-items:center;gap:.5rem">
+                Category
+                <p-sortIcon field="category"></p-sortIcon>
+              </div>
+            </th>
+            <th pSortableColumn="quantity" style="width:20%; text-align:right">
+              <div style="display:flex;align-items:center;gap:.5rem; justify-content:flex-end">
+                Quantity
+                <p-sortIcon field="quantity"></p-sortIcon>
+              </div>
+            </th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-product>
+          <tr>
+            <td>{{ product.code }}</td>
+            <td>{{ product.name }}</td>
+            <td>{{ product.category }}</td>
+            <td style="text-align:right; font-variant-numeric: tabular-nums;">
+              {{ product.quantity | number:'1.0-0' }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </ng-template>
+  </p-splitter>
+</div>
