@@ -11,7 +11,7 @@ import {InputTextModule} from 'primeng/inputtext';
 import {Toolbar} from 'primeng/toolbar';
 import {ButtonDirective} from 'primeng/button';
 
-import {ProductService} from './service/productsservice';
+import {ProductService} from './services/productsservice';
 import {IconField} from 'primeng/iconfield';
 import {InputIcon} from 'primeng/inputicon';
 
