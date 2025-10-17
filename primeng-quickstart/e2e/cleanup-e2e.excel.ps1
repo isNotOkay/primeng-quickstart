@@ -1,23 +1,39 @@
 param(
-  [Parameter(Mandatory = $true)]
   [string]$WorkbookPath,
   [string]$Prefix = 'E2E'
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Resolve and validate
+# Resolve workbook path in this order:
+#  1) explicit param
+#  2) env:OPEN_WEB_UI_DATA_DIRECTORY\workbook.xlsx
+#  3) C:\sql_tool_server_data\workbook.xlsx
+if ([string]::IsNullOrWhiteSpace($WorkbookPath)) {
+  $dataDir = $env:OPEN_WEB_UI_DATA_DIRECTORY
+  if ([string]::IsNullOrWhiteSpace($dataDir)) { $dataDir = 'C:\sql_tool_server_data' }
+  $WorkbookPath = Join-Path $dataDir 'workbook.xlsx'
+}
+
 $wbPath = [IO.Path]::GetFullPath($WorkbookPath)
 if (-not (Test-Path -LiteralPath $wbPath)) {
-  throw "Workbook not found: $wbPath"
+  # Fallback if an explicit-but-wrong path was provided
+  $dataDir = $env:OPEN_WEB_UI_DATA_DIRECTORY
+  if ([string]::IsNullOrWhiteSpace($dataDir)) { $dataDir = 'C:\sql_tool_server_data' }
+  $fallback = Join-Path $dataDir 'workbook.xlsx'
+  if ($fallback -ne $wbPath -and (Test-Path -LiteralPath $fallback)) {
+    $wbPath = $fallback
+  } else {
+    Write-Host "[INFO] Workbook not found (orig: $WorkbookPath, fallback: $fallback). Nothing to clean."
+    exit 0
+  }
 }
 
 Write-Host "[INFO] Workbook : '$wbPath'"
 Write-Host "[INFO] Prefix   : '$Prefix'  (sheets like '$Prefix*')"
 
-# Start Excel (own instance), run hidden & without prompts
 $excel = $null
-$wb = $null
+$wb    = $null
 
 try {
   $excel = New-Object -ComObject Excel.Application
@@ -26,7 +42,7 @@ try {
 
   $wb = $excel.Workbooks.Open($wbPath)  # open read/write
 
-  # Collect sheets to delete (iterate backwards to avoid index shifting)
+  # Gather sheets to delete (iterate backwards)
   $toDelete = @()
   for ($i = $wb.Worksheets.Count; $i -ge 1; $i--) {
     $ws = $wb.Worksheets.Item($i)
@@ -44,8 +60,8 @@ try {
   }
 }
 catch {
-  Write-Error "[ERROR] $($_.Exception.Message)"
-  exit 5
+  Write-Warning "[WARN] Excel cleanup error: $($_.Exception.Message). Continuing."
+  exit 0
 }
 finally {
   if ($wb)    { try { $wb.Close($true) } catch {} }

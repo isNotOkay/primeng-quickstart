@@ -1,4 +1,4 @@
-// e2e/basics.spec.ts
+// e2e/e2e.spec.ts
 import {APIRequestContext, expect, Locator, Page, test} from '@playwright/test';
 
 const API_BASE = process.env['API_BASE'] ?? 'http://localhost:4713';
