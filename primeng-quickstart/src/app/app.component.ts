@@ -88,6 +88,11 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly sortBy = signal<string | null>(null);
   protected readonly sortDir = signal<'asc' | 'desc'>('asc');
 
+  protected readonly tableKey = computed(() => {
+    const sel = this.selectedListItem();
+    return sel ? `${sel.relationType}|${sel.id}` : 'none';
+  });
+
   private readonly apiService = inject(ApiService);
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);

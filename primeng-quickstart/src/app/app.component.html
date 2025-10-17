@@ -96,60 +96,63 @@
 
     <!-- Right panel -->
     <ng-template #panel>
-      <p-table
-        [value]="rows()"
-        [loading]="loadingRows()"
-        size="small"
-        dataKey="id"
-        [rowTrackBy]="rowTrackBy"
-        showGridlines
-        [resizableColumns]="true"
-        columnResizeMode="expand"
-        [paginator]="true"
-        paginatorPosition="bottom"
-        [rows]="pageSize()"
-        [totalRecords]="totalCount()"
-        [showCurrentPageReport]="true"
-        currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
-        [scrollable]="true"
-        scrollHeight="flex"
-        [style]="{ flex: '1 1 0' }"
-        [tableStyle]="{ width: 'max-content' }"
-        sortMode="single"
-        [lazy]="true"
-        (onLazyLoad)="onLazyLoad($event)"
-      >
-        <ng-template pTemplate="header">
-          <tr>
-            @for (col of columnNames(); track col) {
-              <th pResizableColumn [pSortableColumn]="col" style="width: 20%">
-                <div style="display: flex; align-items: center; gap: 0.5rem">
-                  {{ col }}
-                  <p-sortIcon [field]="col"></p-sortIcon>
-                </div>
-              </th>
-            }
-          </tr>
-        </ng-template>
+      @for (key of [tableKey()]; track key) {
+        <p-table
+          [value]="rows()"
+          [loading]="loadingRows()"
+          size="small"
+          dataKey="id"
+          [rowTrackBy]="rowTrackBy"
+          showGridlines
+          [resizableColumns]="true"
+          columnResizeMode="expand"
+          [paginator]="true"
+          paginatorPosition="bottom"
+          [rows]="pageSize()"
+          [totalRecords]="totalCount()"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+          [scrollable]="true"
+          scrollHeight="flex"
+          [style]="{ flex: '1 1 0' }"
+          [tableStyle]="{ width: 'max-content' }"
+          sortMode="single"
+          [lazy]="true"
+          (onLazyLoad)="onLazyLoad($event)"
+        >
+          <ng-template pTemplate="header">
+            <tr>
+              @for (col of columnNames(); track col) {
+                <th pResizableColumn [pSortableColumn]="col" style="width: 20%">
+                  <div style="display: flex; align-items: center; gap: 0.5rem">
+                    {{ col }}
+                    <p-sortIcon [field]="col"></p-sortIcon>
+                  </div>
+                </th>
+              }
+            </tr>
+          </ng-template>
 
-        <ng-template pTemplate="body" let-row>
-          <tr>
-            @for (col of columnNames(); track col) {
-              <td [style.text-align]="isNumber(row[col]) ? 'right' : 'left'" style="font-variant-numeric: tabular-nums">
-                {{ row[col] }}
+          <ng-template pTemplate="body" let-row>
+            <tr>
+              @for (col of columnNames(); track col) {
+                <td [style.text-align]="isNumber(row[col]) ? 'right' : 'left'" style="font-variant-numeric: tabular-nums">
+                  {{ row[col] }}
+                </td>
+              }
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td [attr.colspan]="columnNames().length || 1">
+                <div style="padding: 0.75rem">Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.</div>
               </td>
-            }
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td [attr.colspan]="columnNames().length || 1">
-              <div style="padding: 0.75rem">Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.</div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
     </ng-template>
+
   </p-splitter>
 </div>
