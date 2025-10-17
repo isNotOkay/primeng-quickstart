@@ -8,6 +8,10 @@ body {
   overflow: hidden; /* only the table should scroll */
 }
 
+:root {
+  --p-toast-width: 800px;
+}
+
 html {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
