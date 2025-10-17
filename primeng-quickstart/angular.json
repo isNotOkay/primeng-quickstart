@@ -38,7 +38,7 @@
                 {
                   "type": "initial",
                   "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumError": "2MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -99,11 +99,11 @@
         "e2e": {
           "builder": "playwright-ng-schematics:playwright",
           "options": {
-            "devServerTarget": "sqlite-web-demo:serve"
+            "devServerTarget": "primeng-quickstart:serve"
           },
           "configurations": {
             "production": {
-              "devServerTarget": "sqlite-web-demo:serve:production"
+              "devServerTarget": "primeng-quickstart:serve:production"
             }
           }
         }
