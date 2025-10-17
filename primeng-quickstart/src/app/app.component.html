@@ -1,4 +1,5 @@
-<!-- file: src/app/app.component.html -->
+<p-toast position="bottom-center"></p-toast>
+
 <!-- Full-page flex column: toolbar on top, splitter fills the rest -->
 <div style="height: 100vh; width: 100%; display: flex; flex-direction: column">
   <!-- Global toolbar -->
@@ -118,7 +119,6 @@
         [lazy]="true"
         (onLazyLoad)="onLazyLoad($event)"
       >
-        <!-- Dynamic header from API columnNames -->
         <ng-template pTemplate="header">
           <tr>
             @for (col of columnNames(); track col) {
@@ -132,7 +132,6 @@
           </tr>
         </ng-template>
 
-        <!-- Dynamic body from API rows -->
         <ng-template pTemplate="body" let-row>
           <tr>
             @for (col of columnNames(); track col) {

@@ -1,20 +1,27 @@
-import { Injectable } from '@angular/core';
-
-// TODO: Migrate.
+import { Injectable, inject } from '@angular/core';
+import { MessageService } from 'primeng/api';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  // private snackBar = inject(MatSnackBar);
+  private readonly messages = inject(MessageService);
 
-  info(message: string): void {
-    this.show(message);
+  info(detail: string, life = 6000): void {
+    this.messages.add({ severity: 'info', summary: 'Info', detail, life });
   }
 
-  error(message: string): void {
-    this.show(message);
+  success(detail: string, life = 5000): void {
+    this.messages.add({ severity: 'success', summary: 'Erfolg', detail, life });
   }
 
-  private show(message: string, duration = 6000): void {
-    // this.snackBar.open(message, undefined, {duration, verticalPosition: 'bottom', horizontalPosition: 'center'});
+  warn(detail: string, life = 6000): void {
+    this.messages.add({ severity: 'warn', summary: 'Hinweis', detail, life });
+  }
+
+  error(detail: string, life = 7000): void {
+    this.messages.add({ severity: 'error', summary: 'Fehler', detail, life });
+  }
+
+  clear(): void {
+    this.messages.clear();
   }
 }
