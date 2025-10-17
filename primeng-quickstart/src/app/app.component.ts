@@ -1,29 +1,29 @@
 // file: src/app/app.component.ts
-import {Component, computed, inject, OnInit, signal, ViewChild} from '@angular/core';
-import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import { Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
-import {Table, TableLazyLoadEvent, TableModule} from 'primeng/table';
-import {SplitterModule} from 'primeng/splitter';
-import {SelectModule} from 'primeng/select';
-import {ListboxModule} from 'primeng/listbox';
-import {InputTextModule} from 'primeng/inputtext';
-import {Toolbar} from 'primeng/toolbar';
-import {ButtonDirective} from 'primeng/button';
+import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
+import { SplitterModule } from 'primeng/splitter';
+import { SelectModule } from 'primeng/select';
+import { ListboxModule } from 'primeng/listbox';
+import { InputTextModule } from 'primeng/inputtext';
+import { Toolbar } from 'primeng/toolbar';
+import { ButtonDirective } from 'primeng/button';
 
-import {IconField} from 'primeng/iconfield';
-import {InputIcon} from 'primeng/inputicon';
-import {toSignal} from '@angular/core/rxjs-interop';
-import {EngineType} from './enums/engine-type.enum';
-import {ListItemModel} from './models/list-item.model';
-import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
-import {ApiService} from './services/api.service';
-import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
-import {NotificationService} from './services/notification.service';
-import {finalize, forkJoin, of, Subscription} from 'rxjs';
-import {RelationApiModel} from './models/api/relation.api-model';
-import {RelationType} from './enums/relation-type.enum';
-import {PagedResultApiModel} from './models/api/paged-result.api-model';
-import {RowModel} from './models/row.model';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { EngineType } from './enums/engine-type.enum';
+import { ListItemModel } from './models/list-item.model';
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
+import { ApiService } from './services/api.service';
+import { CreateOrUpdateRelationEvent, SignalRService } from './services/signalr.service';
+import { NotificationService } from './services/notification.service';
+import { finalize, forkJoin, of, Subscription } from 'rxjs';
+import { RelationApiModel } from './models/api/relation.api-model';
+import { RelationType } from './enums/relation-type.enum';
+import { PagedResultApiModel } from './models/api/paged-result.api-model';
+import { RowModel } from './models/row.model';
 
 // Types for grouped listbox
 type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
@@ -34,7 +34,7 @@ type Group = { label: string; items: ItemOption[] };
   standalone: true,
   imports: [
     // Angular
-    FormsModule,         // still used for the search input
+    FormsModule, // still used for the search input
     ReactiveFormsModule, // for [formControl] on select + listbox
     // PrimeNG
     TableModule,
@@ -45,10 +45,10 @@ type Group = { label: string; items: ItemOption[] };
     Toolbar,
     ButtonDirective,
     IconField,
-    InputIcon
+    InputIcon,
   ],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit {
   // Reference to PrimeNG table to clear sort/paging state
@@ -56,7 +56,7 @@ export class AppComponent implements OnInit {
 
   // ── Engine select (reactive) ───────────────────────────────────
   protected readonly EngineType = EngineType;
-  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
+  readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
   private readonly engineSignal = toSignal(this.engineControl.valueChanges, {
     initialValue: this.engineControl.value,
   });
@@ -84,13 +84,13 @@ export class AppComponent implements OnInit {
 
   // ── Datenquelle select: values match backend ("Sqlite" | "Excel") ─
   dataSources: Array<{ label: string; value: EngineType }> = [
-    {label: 'SQLite', value: EngineType.Sqlite},
-    {label: 'Excel', value: EngineType.Excel}
+    { label: 'SQLite', value: EngineType.Sqlite },
+    { label: 'Excel', value: EngineType.Excel },
   ];
 
   // ── Listbox (reactive) ─────────────────────────────────────────
   // The listbox value encodes type+id like "table|Jet Journal Klein"
-  readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
+  readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
 
   // Grouped data for the listbox (rebuilt from API items)
   private allGroups: Group[] = [];
@@ -99,15 +99,14 @@ export class AppComponent implements OnInit {
   // External filter
   listFilter = '';
 
-  constructor() {
-  }
+  constructor() {}
 
   ngOnInit() {
     // Load persisted engine
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
       next: (dto) => {
-        this.engineControl.setValue(dto.engine, {emitEvent: false});
+        this.engineControl.setValue(dto.engine, { emitEvent: false });
         this.loadedTablesAndViews.set(false);
         this.clearSelectedListItem();
         this.loadTablesAndViews(); // initial load after engine arrives
@@ -173,25 +172,25 @@ export class AppComponent implements OnInit {
         a.remove();
         URL.revokeObjectURL(url);
       },
-      error: () => this.notificationService.error('Download fehlgeschlagen.')
+      error: () => this.notificationService.error('Download fehlgeschlagen.'),
     });
   }
 
   // ── Build options from API data and apply current filter ───────
   private rebuildGroupsFromApi(): void {
-    const tables: ItemOption[] = this.tableItems().map(it => ({
+    const tables: ItemOption[] = this.tableItems().map((it) => ({
       label: it.label,
-      value: this.makeValue(RelationType.Table, it.id)
+      value: this.makeValue(RelationType.Table, it.id),
     }));
 
-    const views: ItemOption[] = this.viewItems().map(it => ({
+    const views: ItemOption[] = this.viewItems().map((it) => ({
       label: it.label,
-      value: this.makeValue(RelationType.View, it.id)
+      value: this.makeValue(RelationType.View, it.id),
     }));
 
     this.allGroups = [
-      {label: 'Tabellen', items: tables},
-      {label: 'Sichten', items: views}
+      { label: 'Tabellen', items: tables },
+      { label: 'Sichten', items: views },
     ];
 
     this.applyFilter(this.listFilter);
@@ -200,16 +199,14 @@ export class AppComponent implements OnInit {
   // External filter keeps groups visible; adds placeholder when no matches
   applyFilter(query: string) {
     const q = this.normalize(query);
-    this.groupedOptions = this.allGroups.map(g => {
-      const matched = q
-        ? g.items.filter(it => this.normalize(it.label).includes(q))
-        : g.items;
+    this.groupedOptions = this.allGroups.map((g) => {
+      const matched = q ? g.items.filter((it) => this.normalize(it.label).includes(q)) : g.items;
 
       const items = matched.length
         ? matched
-        : [{label: 'Keine Treffer', value: null, disabled: true, __placeholder: true}];
+        : [{ label: 'Keine Treffer', value: null, disabled: true, __placeholder: true }];
 
-      return {label: g.label, items};
+      return { label: g.label, items };
     });
   }
 
@@ -227,7 +224,7 @@ export class AppComponent implements OnInit {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();
-    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
+    const views$ = this.isExcel() ? of({ items: [] as RelationApiModel[] }) : this.apiService.loadViews();
 
     forkJoin([tables$, views$]).subscribe({
       next: ([tablesResponse, viewsResponse]) => {
@@ -240,18 +237,16 @@ export class AppComponent implements OnInit {
 
         let listItem: ListItemModel | null = null;
         if (createRelationEvent) {
-          const type = createRelationEvent.relationType === RelationType.View
-            ? RelationType.View
-            : RelationType.Table;
+          const type = createRelationEvent.relationType === RelationType.View ? RelationType.View : RelationType.Table;
           listItem = this.findInLists(type, createRelationEvent.name);
         }
 
         if (listItem) {
           this.selectListItem(listItem);
-          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), {emitEvent: false});
+          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), { emitEvent: false });
         } else {
           this.clearSelectedListItem();
-          this.listControl.setValue(null, {emitEvent: false});
+          this.listControl.setValue(null, { emitEvent: false });
         }
       },
       error: () => {
@@ -272,7 +267,7 @@ export class AppComponent implements OnInit {
 
   private findInLists(type: RelationType, id: string): ListItemModel | null {
     const list = type === RelationType.Table ? this.tableItems() : this.viewItems();
-    return list.find(item => item.id === id) ?? null;
+    return list.find((item) => item.id === id) ?? null;
   }
 
   private selectListItem(item: ListItemModel): void {
@@ -310,11 +305,13 @@ export class AppComponent implements OnInit {
     // clear UI state if table is available (PrimeNG API)
     try {
       this.dataTable?.clear();
-    } catch { /* noop for versions without clear() */
+    } catch {
+      /* noop for versions without clear() */
     }
     try {
       this.dataTable?.reset();
-    } catch { /* noop for versions without reset() */
+    } catch {
+      /* noop for versions without reset() */
     }
 
     // also ensure paginator goes back to the first row
@@ -338,7 +335,7 @@ export class AppComponent implements OnInit {
         this.pageIndex(),
         this.pageSize(),
         this.sortBy(),
-        this.sortDir()
+        this.sortDir(),
       )
       .pipe(finalize(() => this.loadingRows.set(false)))
       .subscribe({
@@ -377,7 +374,7 @@ export class AppComponent implements OnInit {
     const [typeStr, ...rest] = v.split('|');
     const id = rest.join('|'); // allow '|' in names just in case
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
-    return {type, id};
+    return { type, id };
   }
 
   // ── Table helpers (right pane) ─────────────────────────────────

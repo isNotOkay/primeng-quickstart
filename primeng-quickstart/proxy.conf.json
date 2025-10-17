@@ -1,18 +1,13 @@
 [
   {
-    "context": [
-      "/api",
-      "/openapi"
-    ],
+    "context": ["/api", "/openapi"],
     "target": "http://localhost:4713",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
   },
   {
-    "context": [
-      "/hubs"
-    ],
+    "context": ["/hubs"],
     "target": "http://localhost:4713",
     "ws": true,
     "secure": false,

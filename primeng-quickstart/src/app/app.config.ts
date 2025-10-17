@@ -1,8 +1,8 @@
-import {ApplicationConfig, provideZoneChangeDetection} from '@angular/core';
-import {providePrimeNG} from 'primeng/config';
-import {provideAnimationsAsync} from '@angular/platform-browser/animations/async';
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { providePrimeNG } from 'primeng/config';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import Aura from '@primeuix/themes/aura';
-import {provideHttpClient} from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -10,10 +10,10 @@ export const appConfig: ApplicationConfig = {
     providePrimeNG({
       theme: {
         preset: Aura,
-        options: {darkModeSelector: '.p-dark'},
+        options: { darkModeSelector: '.p-dark' },
       },
     }),
-    provideZoneChangeDetection({eventCoalescing: true}),
+    provideZoneChangeDetection({ eventCoalescing: true }),
     provideHttpClient(),
   ],
 };

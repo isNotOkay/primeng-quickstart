@@ -1,5 +1,5 @@
-import {Pipe, PipeTransform} from '@angular/core';
-import {isNumber} from 'underscore';
+import { Pipe, PipeTransform } from '@angular/core';
+import { isNumber } from 'underscore';
 
 @Pipe({
   name: 'isNumber',

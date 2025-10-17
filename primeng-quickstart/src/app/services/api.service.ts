@@ -8,7 +8,9 @@ import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '../constants/api-params.c
 import { RowModel } from '../models/row.model';
 import { EngineType } from '../enums/engine-type.enum';
 
-export interface EngineDto { engine: EngineType; }
+export interface EngineDto {
+  engine: EngineType;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -34,10 +36,7 @@ export class ApiService {
     sortDir: 'asc' | 'desc' = 'asc',
   ): Observable<PagedResultApiModel<RelationApiModel>> {
     const params = this.buildParams(pageIndex, pageSize, sortBy, sortDir);
-    return this.http.get<PagedResultApiModel<RelationApiModel>>(
-      `${this.apiPrefix}/tables`,
-      { params },
-    );
+    return this.http.get<PagedResultApiModel<RelationApiModel>>(`${this.apiPrefix}/tables`, { params });
   }
 
   loadViews(
@@ -47,10 +46,7 @@ export class ApiService {
     sortDir: 'asc' | 'desc' = 'asc',
   ): Observable<PagedResultApiModel<RelationApiModel>> {
     const params = this.buildParams(pageIndex, pageSize, sortBy, sortDir);
-    return this.http.get<PagedResultApiModel<RelationApiModel>>(
-      `${this.apiPrefix}/views`,
-      { params },
-    );
+    return this.http.get<PagedResultApiModel<RelationApiModel>>(`${this.apiPrefix}/views`, { params });
   }
 
   // ── Rows ───────────────────────────────────────────────────────
@@ -64,10 +60,9 @@ export class ApiService {
   ): Observable<PagedResultApiModel<RowModel>> {
     const params = this.buildParams(pageIndex, pageSize, sortBy ?? null, sortDir);
     const path = relationType === RelationType.Table ? 'tables' : 'views';
-    return this.http.get<PagedResultApiModel<RowModel>>(
-      `${this.apiPrefix}/${path}/${encodeURIComponent(id)}`,
-      { params },
-    );
+    return this.http.get<PagedResultApiModel<RowModel>>(`${this.apiPrefix}/${path}/${encodeURIComponent(id)}`, {
+      params,
+    });
   }
 
   // ── Download ───────────────────────────────────────────────────
@@ -77,19 +72,14 @@ export class ApiService {
     return this.http.get(`${this.apiPrefix}/download`, {
       params,
       responseType: 'blob',
-      observe: 'response'
+      observe: 'response',
     });
   }
 
   // ── Helpers ────────────────────────────────────────────────────
-  private buildParams(
-    pageIndex: number,
-    pageSize: number,
-    sortBy: string | null,
-    sortDir: 'asc' | 'desc',
-  ): HttpParams {
+  private buildParams(pageIndex: number, pageSize: number, sortBy: string | null, sortDir: 'asc' | 'desc'): HttpParams {
     let params = new HttpParams()
-      .set('page', String(pageIndex + 1))   // backend is 1-based
+      .set('page', String(pageIndex + 1)) // backend is 1-based
       .set('pageSize', String(pageSize));
 
     if (sortBy && sortBy.trim().length > 0) {

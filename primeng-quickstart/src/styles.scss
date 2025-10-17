@@ -1,21 +1,21 @@
-@use "primeicons/primeicons.css";
-@use "primeflex/primeflex.css";
+@use 'primeicons/primeicons.css';
+@use 'primeflex/primeflex.css';
 
-
-html, body {
+html,
+body {
   height: 100%;
-  margin: 0;          /* remove UA default 8px margin */
-  overflow: hidden;   /* only the table should scroll */
+  margin: 0; /* remove UA default 8px margin */
+  overflow: hidden; /* only the table should scroll */
 }
 
 html {
-    box-sizing: border-box;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-family: "Inter", sans-serif;
-    font-optical-sizing: auto;
-    font-variation-settings: normal;
-    font-weight: 400;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Inter', sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings: normal;
+  font-weight: 400;
 }
 
 p-toolbar {
@@ -25,4 +25,3 @@ p-toolbar {
 p-splitterpanel {
   border: 0 !important;
 }
-

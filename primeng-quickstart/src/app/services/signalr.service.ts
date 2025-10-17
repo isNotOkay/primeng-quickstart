@@ -26,22 +26,16 @@ export class SignalRService {
     this.createOrUpdateRelationSubject.asObservable();
 
   /** Emits when the backend confirms a deleted table/view */
-  readonly onDeleteRelation$: Observable<DeleteRelationEvent> =
-    this.deleteRelationSubject.asObservable();
+  readonly onDeleteRelation$: Observable<DeleteRelationEvent> = this.deleteRelationSubject.asObservable();
 
   start(): void {
     if (this.hub?.state === signalR.HubConnectionState.Connected) return;
 
-    this.hub = new signalR.HubConnectionBuilder()
-      .withUrl('/hubs/notifications')
-      .withAutomaticReconnect()
-      .build();
+    this.hub = new signalR.HubConnectionBuilder().withUrl('/hubs/notifications').withAutomaticReconnect().build();
 
     // Canonical event (create or update)
     this.hub.on('CreateOrUpdateRelation', (payload: any) => {
-      const relationType = (payload?.relationType ?? payload?.type ?? '')
-        .toString()
-        .toLowerCase() as RelationType;
+      const relationType = (payload?.relationType ?? payload?.type ?? '').toString().toLowerCase() as RelationType;
       const name = (payload?.name ?? '').toString();
       const created = !!payload?.created; // NEW
 
@@ -52,9 +46,7 @@ export class SignalRService {
 
     // Delete event
     this.hub.on('DeleteRelation', (payload: any) => {
-      const relationType = (payload?.relationType ?? payload?.type ?? '')
-        .toString()
-        .toLowerCase() as RelationType;
+      const relationType = (payload?.relationType ?? payload?.type ?? '').toString().toLowerCase() as RelationType;
       const name = (payload?.name ?? '').toString();
 
       if ((relationType === 'table' || relationType === 'view') && name) {
@@ -62,7 +54,7 @@ export class SignalRService {
       }
     });
 
-    this.hub.start().catch(err => console.error('SignalR start error', err));
+    this.hub.start().catch((err) => console.error('SignalR start error', err));
   }
 
   /** Optional helpers */
