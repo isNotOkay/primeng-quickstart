@@ -113,23 +113,16 @@ async function selectEngine(page: Page, engine: 'SQLite' | 'Excel') {
     await panel.getByText(engine, {exact: true}).first().click({timeout: UI_TIMEOUT});
   }
 
-  await expect.poll(async () => await readSelectLabel(page), {
-    message: 'engine select label to update',
-    timeout: UI_TIMEOUT,
-  }).toContain(engine);
+  await expect
+    .poll(async () => await readSelectLabel(page), {
+      message: 'engine select label to update',
+      timeout: UI_TIMEOUT,
+    })
+    .toContain(engine);
 
   await waitForListsReady(page);
 }
 
-/** Reloads the page and ensures the desired engine is selected */
-async function reloadAndEnsureEngine(page: Page, engine: 'SQLite' | 'Excel') {
-  await page.reload();
-  await waitForListsReady(page);
-  const label = await readSelectLabel(page);
-  if (!label.includes(engine)) {
-    await selectEngine(page, engine);
-  }
-}
 
 // Works whether PrimeNG adds ARIA roles or not
 async function expectHeaderVisible(page: Page, name: string) {
@@ -139,6 +132,19 @@ async function expectHeaderVisible(page: Page, name: string) {
   } else {
     await expect(page.locator(`p-table thead th:has-text("${name}")`)).toBeVisible({timeout: UI_TIMEOUT});
   }
+}
+
+/** Wait until a specific list item appears (SignalR-driven for both engines) */
+async function waitForListItemVisible(page: Page, text: string): Promise<Locator> {
+  const item = page.locator('.left-listbox').getByText(text, {exact: true});
+  await expect(item).toBeVisible({timeout: UI_TIMEOUT});
+  return item;
+}
+
+/** Wait until a specific list item disappears (SignalR-driven for both engines) */
+async function waitForListItemHidden(page: Page, text: string): Promise<void> {
+  const item = page.locator('.left-listbox').getByText(text, {exact: true});
+  await expect(item).toBeHidden({timeout: UI_TIMEOUT});
 }
 
 test.describe.configure({mode: 'serial'});
@@ -234,7 +240,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// SQLite suite
+// SQLite suite (SignalR-driven)
 // ───────────────────────────────────────────────────────────────
 test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   test.describe.configure({mode: 'serial'});
@@ -257,12 +263,8 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       },
     });
 
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    const navItem = page.locator('.left-listbox').getByText(tableName, {exact: true});
-    await expect(navItem).toBeVisible({timeout: UI_TIMEOUT});
-
-    await navItem.click();
+    const navItem = await waitForListItemVisible(page, tableName);
+    await navItem.click(); // ok even if auto-selected
     await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'SomeDate');
   });
@@ -288,12 +290,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       },
     });
 
-    // NEW: force a reload so the left list picks up the new view
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    const viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeVisible({timeout: UI_TIMEOUT});
-
+    const viewItem = await waitForListItemVisible(page, viewName);
     await viewItem.click();
     await expectHeaderVisible(page, 'AlbumTitle');
     await expectHeaderVisible(page, 'ArtistName');
@@ -312,17 +309,15 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
     });
 
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+
     await dsl(request, {
       operation: 'Alter',
       target: {name: tableName},
       alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
     });
 
-    // NEW: reload to re-fetch updated column metadata
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    await page.locator('.left-listbox').getByText(tableName, {exact: true}).click();
-    await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -346,24 +341,14 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       },
     });
 
-    // NEW: reload so the new view appears
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    let viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeVisible({timeout: UI_TIMEOUT});
-
+    const viewItem = await waitForListItemVisible(page, viewName);
     await viewItem.click();
     await expectHeaderVisible(page, 'LastName_Stripped');
     await expectHeaderVisible(page, 'BirthDate');
     await expectHeaderVisible(page, 'BirthHoliday');
 
     await dsl(request, {operation: 'Drop', target: {name: viewName}, drop: {}});
-
-    // NEW: reload so the removal is reflected
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeHidden({timeout: UI_TIMEOUT});
+    await waitForListItemHidden(page, viewName);
   });
 
   test('renames a column via DSL and UI reflects the new header', async ({page, request, baseURL}) => {
@@ -384,12 +369,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       },
     });
 
-    // 🔧 ensure the left list picks up the new table
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    const navItem = page.locator('.left-listbox').getByText(tableName, {exact: true});
-    await expect(navItem).toBeVisible({timeout: UI_TIMEOUT});
-    await navItem.click();
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
     await expectHeaderVisible(page, 'OldCol');
 
     await dsl(request, {
@@ -398,10 +378,6 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]},
     });
 
-    // 🔧 reload so the header metadata is refreshed
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    await page.locator('.left-listbox').getByText(tableName, {exact: true}).click();
     await expectHeaderVisible(page, 'NewCol');
 
     const oldHeaderRole = page.getByRole('columnheader', {name: 'OldCol'});
@@ -409,7 +385,6 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       await expect(oldHeaderRole).toHaveCount(0, {timeout: UI_TIMEOUT});
     }
   });
-
 
   test('creates a VIEW using OD_Wochentag and UI shows German weekday', async ({page, request, baseURL}) => {
     const viewName = `E2E_Playwright_Wochentag_${Date.now()}`;
@@ -427,31 +402,19 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
       },
     });
 
-    // NEW: reload so the new view appears
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    const viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeVisible({timeout: UI_TIMEOUT});
-
-    await viewItem.click();
+    await waitForListItemVisible(page, viewName).then((i) => i.click());
     await expectHeaderVisible(page, 'Weekday');
 
     const firstCell = page.locator('p-table table tbody tr >> td').first();
     await expect(firstCell).toHaveText('Mittwoch', {timeout: UI_TIMEOUT});
 
     await dsl(request, {operation: 'Drop', target: {name: viewName}, drop: {}});
-
-    // NEW: reload so the removal is reflected
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    await expect(page.locator('.left-listbox').getByText(viewName, {exact: true})).toBeHidden({
-      timeout: UI_TIMEOUT,
-    });
+    await waitForListItemHidden(page, viewName);
   });
 });
 
 // ───────────────────────────────────────────────────────────────
-// Excel suite
+// Excel suite (now SignalR-driven as well)
 // ───────────────────────────────────────────────────────────────
 test.describe('Tool Server ↔ Angular UI — Excel', () => {
   test.describe.configure({mode: 'serial'});
@@ -474,11 +437,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
       },
     });
 
-    await reloadAndEnsureEngine(page, 'Excel');
-
-    const navItem = page.locator('.left-listbox').getByText(sheetName, {exact: true});
-    await expect(navItem).toBeVisible({timeout: UI_TIMEOUT});
-
+    const navItem = await waitForListItemVisible(page, sheetName);
     await navItem.click();
     await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'Name');
@@ -496,16 +455,15 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
       create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
     });
 
+    await waitForListItemVisible(page, sheetName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+
     await dsl(request, {
       operation: 'Alter',
       target: {name: sheetName},
       alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
     });
 
-    await reloadAndEnsureEngine(page, 'Excel');
-
-    await page.locator('.left-listbox').getByText(sheetName, {exact: true}).click();
-    await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -527,15 +485,11 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
       },
     });
 
-    await reloadAndEnsureEngine(page, 'Excel');
-
-    const navItem = page.locator('.left-listbox').getByText(sheetName, {exact: true});
-    await expect(navItem).toBeVisible({timeout: UI_TIMEOUT});
-
-    await navItem.click();
+    // Open it once to load
+    await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'OldCol');
 
-    // Navigate away to avoid read locks before mutating
+    // Optional: navigate away to avoid any file locks depending on backend impl
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
 
@@ -545,10 +499,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
       alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]},
     });
 
-    // Reload so header metadata refreshes
-    await reloadAndEnsureEngine(page, 'Excel');
-
-    await page.locator('.left-listbox').getByText(sheetName, {exact: true}).click();
+    await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'NewCol');
 
     const oldHeaderRole = page.getByRole('columnheader', {name: 'OldCol'});
@@ -557,8 +508,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     }
   });
 
-
-  test('drops an Excel sheet and UI removes it', async ({ page, request, baseURL }) => {
+  test('drops an Excel sheet and UI removes it', async ({page, request, baseURL}) => {
     const sheetName = `E2E_XL_Drop_${Date.now()}`;
 
     await goHome(page, baseURL);
@@ -566,25 +516,18 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
 
     await dsl(request, {
       operation: 'Create',
-      target: { name: sheetName },
-      create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true }] },
+      target: {name: sheetName},
+      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
     });
 
-    // ✅ Excel doesn’t push events → reload so the new sheet appears
-    await reloadAndEnsureEngine(page, 'Excel');
+    await waitForListItemVisible(page, sheetName);
 
-    const navItem = page.locator('.left-listbox').getByText(sheetName, { exact: true });
-    await expect(navItem).toBeVisible({ timeout: UI_TIMEOUT });
+    await dsl(request, {operation: 'Drop', target: {name: sheetName}, drop: {}});
 
-    await dsl(request, { operation: 'Drop', target: { name: sheetName }, drop: {} });
-
-    // And reload again so removal is reflected
-    await reloadAndEnsureEngine(page, 'Excel');
-
-    await expect(navItem).toBeHidden({ timeout: UI_TIMEOUT });
+    await waitForListItemHidden(page, sheetName);
   });
 
-
+  // This one still uses SQLite (functions) but benefits from SignalR waits
   test('creates a VIEW using functions (OD_*) and then drops it (UI updates)', async ({page, request, baseURL}) => {
     const viewName = `E2E_Playwright_FuncView_${Date.now()}`;
 
@@ -605,23 +548,13 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
       },
     });
 
-    // NEW: reload so the new view appears
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    let viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeVisible({timeout: UI_TIMEOUT});
-
+    const viewItem = await waitForListItemVisible(page, viewName);
     await viewItem.click();
     await expectHeaderVisible(page, 'LastName_Stripped');
     await expectHeaderVisible(page, 'BirthDate');
     await expectHeaderVisible(page, 'BirthHoliday');
 
     await dsl(request, {operation: 'Drop', target: {name: viewName}, drop: {}});
-
-    // NEW: reload so the removal is reflected
-    await reloadAndEnsureEngine(page, 'SQLite');
-
-    viewItem = page.locator('.left-listbox').getByText(viewName, {exact: true});
-    await expect(viewItem).toBeHidden({timeout: UI_TIMEOUT});
+    await waitForListItemHidden(page, viewName);
   });
 });

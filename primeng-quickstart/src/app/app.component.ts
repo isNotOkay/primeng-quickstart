@@ -1,5 +1,5 @@
 // file: src/app/app.component.ts
-import { Component, computed, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, computed, inject, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
@@ -58,7 +58,7 @@ interface Group {
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   // Reference to PrimeNG table to clear sort/paging state
   @ViewChild(Table) private dataTable?: Table;
 
@@ -89,6 +89,7 @@ export class AppComponent implements OnInit {
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);
   private loadRowsSubscription?: Subscription;
+  private subscriptions: Subscription[] = [];
 
   // ── Datenquelle select: values match backend ("Sqlite" | "Excel") ─
   dataSources: { label: string; value: EngineType }[] = [
@@ -110,6 +111,31 @@ export class AppComponent implements OnInit {
   constructor() {}
 
   ngOnInit() {
+    // Start SignalR + hook streams so create/update/delete is reflected in UI
+    this.signalRService.start();
+
+    // Created/updated → reload lists and auto-select the item
+    this.subscriptions.push(
+      this.signalRService.onCreateOrUpdateRelation$.subscribe((event) => {
+        this.loadTablesAndViews(event); // auto-selects when found
+        const kind = this.relationTypeLabel(event.relationType);
+        this.notificationService.info(
+          event.created ? `${kind} "${event.name}" wurde erstellt.` : `${kind} "${event.name}" wurde aktualisiert.`
+        );
+      })
+    );
+
+    // Deleted → reload lists and clear selection if it was the active one
+    this.subscriptions.push(
+      this.signalRService.onDeleteRelation$.subscribe((event) => {
+        const wasSelected = this.selectedListItem()?.id === event.name;
+        this.loadTablesAndViews(); // rebuilds groups; clears selection by default
+        if (wasSelected) this.listControl.setValue(null, { emitEvent: false });
+        const kind = this.relationTypeLabel(event.relationType);
+        this.notificationService.info(`${kind} "${event.name}" wurde gelöscht.`);
+      })
+    );
+
     // Load persisted engine
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
@@ -156,6 +182,12 @@ export class AppComponent implements OnInit {
         this.selectListItem(item);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.loadRowsSubscription?.unsubscribe();
+    for (const s of this.subscriptions) s.unsubscribe();
+    this.signalRService.stop().catch(() => {});
   }
 
   protected onDownload(): void {
@@ -392,5 +424,10 @@ export class AppComponent implements OnInit {
 
   isNumber(v: any) {
     return typeof v === 'number';
+  }
+
+  // ── Local helpers ──────────────────────────────────────────────
+  private relationTypeLabel(t: RelationType) {
+    return t === RelationType.View ? 'Sicht' : 'Tabelle';
   }
 }
