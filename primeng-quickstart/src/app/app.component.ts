@@ -26,8 +26,16 @@ import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
 
 // Types for grouped listbox
-type ItemOption = { label: string; value: string | null; disabled?: boolean; __placeholder?: boolean };
-type Group = { label: string; items: ItemOption[] };
+interface ItemOption {
+  label: string;
+  value: string | null;
+  disabled?: boolean;
+  __placeholder?: boolean;
+}
+interface Group {
+  label: string;
+  items: ItemOption[];
+}
 
 @Component({
   selector: 'app-root',
@@ -83,7 +91,7 @@ export class AppComponent implements OnInit {
   private loadRowsSubscription?: Subscription;
 
   // ── Datenquelle select: values match backend ("Sqlite" | "Excel") ─
-  dataSources: Array<{ label: string; value: EngineType }> = [
+  dataSources: { label: string; value: EngineType }[] = [
     { label: 'SQLite', value: EngineType.Sqlite },
     { label: 'Excel', value: EngineType.Excel },
   ];
