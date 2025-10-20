@@ -3,3 +3,11 @@
   border-radius: 0 !important;
   justify-content: flex-end !important;
 }
+
+
+.splitter-wrapper {
+  flex-grow: 1;
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+}

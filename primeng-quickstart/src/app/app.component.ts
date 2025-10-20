@@ -24,6 +24,7 @@ import { RelationType } from './enums/relation-type.enum';
 import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
 import { Toast } from 'primeng/toast';
+import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -53,6 +54,7 @@ interface Group {
     IconField,
     InputIcon,
     Toast,
+    LoadingIndicator,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],

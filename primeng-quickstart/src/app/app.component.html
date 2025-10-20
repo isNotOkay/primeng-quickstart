@@ -32,127 +32,134 @@
     </ng-template>
   </p-toolbar>
 
-  <!-- Splitter takes remaining height -->
-  <p-splitter
-    [style]="{ 'flex-grow': 1, overflow: 'hidden', width: '100%' }"
-    [panelSizes]="[25, 75]"
-    [minSizes]="[15, 10]"
-    layout="horizontal"
-  >
-    <!-- Left panel -->
-    <ng-template #panel>
-      <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
-        <!-- External filter with built-in icon (inside the input) -->
-        <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
-          <p-iconfield iconPosition="left">
-            <p-inputicon styleClass="pi pi-search"></p-inputicon>
 
-            <input
-              #filterInput
-              pInputText
-              [(ngModel)]="listFilter"
-              (ngModelChange)="applyFilter($event)"
-              type="text"
-              placeholder="Suchen…"
-              class="w-full"
-            />
-          </p-iconfield>
+  <div class="splitter-wrapper">
+    @if (listsLoading()) {
+      <app-loading-indicator></app-loading-indicator>
+    }
+    <p-splitter
+      [style]="{  height: '100%', width: '100%' }"
+      [panelSizes]="[25, 75]"
+      [minSizes]="[15, 10]"
+      layout="horizontal"
+    >
+      <!-- Left panel -->
+      <ng-template #panel>
+        <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
+          <!-- External filter with built-in icon (inside the input) -->
+          <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
+            <p-iconfield iconPosition="left">
+              <p-inputicon styleClass="pi pi-search"></p-inputicon>
+
+              <input
+                #filterInput
+                pInputText
+                [(ngModel)]="listFilter"
+                (ngModelChange)="applyFilter($event)"
+                type="text"
+                placeholder="Suchen…"
+                class="w-full"
+              />
+            </p-iconfield>
+          </div>
+
+          <!-- Grouped Listbox fed by API; internal scroll -->
+          <p-listbox
+            [group]="true"
+            [options]="groupedOptions"
+            optionGroupLabel="label"
+            optionGroupChildren="items"
+            [formControl]="listControl"
+            optionLabel="label"
+            optionValue="value"
+            [optionDisabled]="isOptionDisabled"
+            [style]="{ width: '100%', 'flex-grow': '1', overflow: 'auto', border: 'none', boxShadow: 'none' }"
+            [listStyle]="{ overflow: 'auto', 'max-height': '100%' }"
+            styleClass="left-listbox"
+          >
+            <ng-template pTemplate="group" let-group>
+              <div
+                style="font-weight: 700; color: var(--p-primary-color); text-transform: uppercase; letter-spacing: 0.02em"
+              >
+                {{ group.label }}
+              </div>
+            </ng-template>
+
+            <ng-template pTemplate="item" let-item>
+              <div
+                [style.padding-left]="item.__placeholder ? '.25rem' : '1rem'"
+                [style.fontStyle]="item.__placeholder ? 'italic' : null"
+                [style.opacity]="item.__placeholder ? 0.75 : 1"
+              >
+                {{ item.label }}
+              </div>
+            </ng-template>
+          </p-listbox>
         </div>
+      </ng-template>
 
-        <!-- Grouped Listbox fed by API; internal scroll -->
-        <p-listbox
-          [group]="true"
-          [options]="groupedOptions"
-          optionGroupLabel="label"
-          optionGroupChildren="items"
-          [formControl]="listControl"
-          optionLabel="label"
-          optionValue="value"
-          [optionDisabled]="isOptionDisabled"
-          [style]="{ width: '100%', 'flex-grow': '1', overflow: 'auto', border: 'none', boxShadow: 'none' }"
-          [listStyle]="{ overflow: 'auto', 'max-height': '100%' }"
-          styleClass="left-listbox"
-        >
-          <ng-template pTemplate="group" let-group>
-            <div
-              style="font-weight: 700; color: var(--p-primary-color); text-transform: uppercase; letter-spacing: 0.02em"
-            >
-              {{ group.label }}
-            </div>
-          </ng-template>
+      <!-- Right panel -->
+      <ng-template #panel>
+        @for (key of [tableKey()]; track key) {
+          <p-table
+            [value]="rows()"
+            [loading]="loadingRows()"
+            size="small"
+            dataKey="id"
+            [rowTrackBy]="rowTrackBy"
+            showGridlines
+            [resizableColumns]="true"
+            columnResizeMode="expand"
+            [paginator]="true"
+            paginatorPosition="bottom"
+            [rows]="pageSize()"
+            [totalRecords]="totalCount()"
+            [showCurrentPageReport]="true"
+            currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+            [scrollable]="true"
+            scrollHeight="flex"
+            [style]="{ flex: '1 1 0' }"
+            [tableStyle]="{ width: 'max-content' }"
+            sortMode="single"
+            [lazy]="true"
+            (onLazyLoad)="onLazyLoad($event)"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                @for (col of columnNames(); track col) {
+                  <th pResizableColumn [pSortableColumn]="col" style="width: 20%">
+                    <div style="display: flex; align-items: center; gap: 0.5rem">
+                      {{ col }}
+                      <p-sortIcon [field]="col"></p-sortIcon>
+                    </div>
+                  </th>
+                }
+              </tr>
+            </ng-template>
 
-          <ng-template pTemplate="item" let-item>
-            <div
-              [style.padding-left]="item.__placeholder ? '.25rem' : '1rem'"
-              [style.fontStyle]="item.__placeholder ? 'italic' : null"
-              [style.opacity]="item.__placeholder ? 0.75 : 1"
-            >
-              {{ item.label }}
-            </div>
-          </ng-template>
-        </p-listbox>
-      </div>
-    </ng-template>
+            <ng-template pTemplate="body" let-row>
+              <tr>
+                @for (col of columnNames(); track col) {
+                  <td [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
+                      style="font-variant-numeric: tabular-nums">
+                    {{ row[col] }}
+                  </td>
+                }
+              </tr>
+            </ng-template>
 
-    <!-- Right panel -->
-    <ng-template #panel>
-      @for (key of [tableKey()]; track key) {
-        <p-table
-          [value]="rows()"
-          [loading]="loadingRows()"
-          size="small"
-          dataKey="id"
-          [rowTrackBy]="rowTrackBy"
-          showGridlines
-          [resizableColumns]="true"
-          columnResizeMode="expand"
-          [paginator]="true"
-          paginatorPosition="bottom"
-          [rows]="pageSize()"
-          [totalRecords]="totalCount()"
-          [showCurrentPageReport]="true"
-          currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
-          [scrollable]="true"
-          scrollHeight="flex"
-          [style]="{ flex: '1 1 0' }"
-          [tableStyle]="{ width: 'max-content' }"
-          sortMode="single"
-          [lazy]="true"
-          (onLazyLoad)="onLazyLoad($event)"
-        >
-          <ng-template pTemplate="header">
-            <tr>
-              @for (col of columnNames(); track col) {
-                <th pResizableColumn [pSortableColumn]="col" style="width: 20%">
-                  <div style="display: flex; align-items: center; gap: 0.5rem">
-                    {{ col }}
-                    <p-sortIcon [field]="col"></p-sortIcon>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td [attr.colspan]="columnNames().length || 1">
+                  <div style="padding: 0.75rem">Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.
                   </div>
-                </th>
-              }
-            </tr>
-          </ng-template>
-
-          <ng-template pTemplate="body" let-row>
-            <tr>
-              @for (col of columnNames(); track col) {
-                <td [style.text-align]="isNumber(row[col]) ? 'right' : 'left'" style="font-variant-numeric: tabular-nums">
-                  {{ row[col] }}
                 </td>
-              }
-            </tr>
-          </ng-template>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </ng-template>
 
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td [attr.colspan]="columnNames().length || 1">
-                <div style="padding: 0.75rem">Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.</div>
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
-      }
-    </ng-template>
-
-  </p-splitter>
+    </p-splitter>
+  </div>
 </div>
