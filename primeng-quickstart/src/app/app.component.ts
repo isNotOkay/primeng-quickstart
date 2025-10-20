@@ -24,7 +24,7 @@ import { RelationType } from './enums/relation-type.enum';
 import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
 import { Toast } from 'primeng/toast';
-import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
+import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -86,6 +86,7 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly sortBy = signal<string | null>(null);
   protected readonly sortDir = signal<'asc' | 'desc'>('asc');
 
+  // Key used to recreate the table on selection change
   protected readonly tableKey = signal(() => {
     const sel = this.selectedListItem();
     return sel ? `${sel.relationType}|${sel.id}` : 'none';
@@ -119,9 +120,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.loadTablesAndViews(event);
         const kind = this.relationTypeLabel(event.relationType);
         this.notificationService.info(
-          event.created ? `${kind} "${event.name}" wurde erstellt.` : `${kind} "${event.name}" wurde aktualisiert.`
+          event.created ? `${kind} "${event.name}" wurde erstellt.` : `${kind} "${event.name}" wurde aktualisiert.`,
         );
-      })
+      }),
     );
 
     this.subscriptions.push(
@@ -131,7 +132,7 @@ export class AppComponent implements OnInit, OnDestroy {
         if (wasSelected) this.listControl.setValue(null, { emitEvent: false });
         const kind = this.relationTypeLabel(event.relationType);
         this.notificationService.info(`${kind} "${event.name}" wurde gelöscht.`);
-      })
+      }),
     );
 
     // Load persisted engine
@@ -154,14 +155,14 @@ export class AppComponent implements OnInit, OnDestroy {
       if (engine == null) return;
 
       // ---- Immediate hard reset to avoid stale requests ----
-      this.loadRowsSubscription?.unsubscribe();            // cancel in-flight data load
-      this.clearSelectedListItem();                         // clear selection + table data
+      this.loadRowsSubscription?.unsubscribe(); // cancel in-flight data load
+      this.clearSelectedListItem(); // clear selection + table data
       this.listControl.setValue(null, { emitEvent: false }); // clear UI selection
-      this.groupedOptions = [];                             // avoid showing old groups momentarily
+      this.groupedOptions = []; // avoid showing old groups momentarily
       this.allGroups = [];
       this.listsLoading.set(true);
       this.loadedTablesAndViews.set(false);
-      this.resetTableState();                               // reset paginator/sort in the UI
+      this.resetTableState(); // reset paginator/sort in the UI
       // ------------------------------------------------------
 
       this.apiService.setEngine(engine).subscribe({
@@ -264,10 +265,7 @@ export class AppComponent implements OnInit, OnDestroy {
   isOptionDisabled = (opt: any) => !!opt?.disabled || !!opt?.__placeholder;
 
   private normalize(s: string) {
-    return (s || '')
-      .toLocaleLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+    return (s || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   // ── API loading for tables & views ─────────────────────────────
@@ -288,7 +286,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
         let listItem: ListItemModel | null = null;
         if (createRelationEvent) {
-          const type = createRelationEvent.relationType === RelationType.View ? RelationType.View : RelationType.Table;
+          const type =
+            createRelationEvent.relationType === RelationType.View ? RelationType.View : RelationType.Table;
           listItem = this.findInLists(type, createRelationEvent.name);
         }
 
@@ -326,8 +325,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.selectedListItem.set(item);
     this.updateColumnNames();
 
+    // Reset sort & paging so stale sort fields don't hit the backend.
+    // IMPORTANT: Do not call loadTableData() here. Let the table's onLazyLoad drive data loading.
     this.resetTableState();
-    this.loadTableData();
   }
 
   private updateColumnNames(): void {
@@ -345,20 +345,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   /** Clear sorting/filters and reset paging & local state */
   private resetTableState(): void {
+    // sync local paging/sort state
     this.pageIndex.set(DEFAULT_PAGE_INDEX);
     this.pageSize.set(DEFAULT_PAGE_SIZE);
     this.sortBy.set(null);
     this.sortDir.set('asc');
 
-    try {
-      this.dataTable?.clear();
-    } catch {}
+    // Use a single PrimeNG reset. Avoid calling both clear() and reset() to prevent duplicate lazy loads.
     try {
       this.dataTable?.reset();
-    } catch {}
-
-    if (this.dataTable) {
-      (this.dataTable as any).first = 0;
+    } catch {
+      /* some versions may not have reset(); best-effort */
     }
   }
 
@@ -393,6 +390,7 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
+  // PrimeNG lazy load handler (paging + sorting)
   onLazyLoad(event: TableLazyLoadEvent) {
     // Ignore lazy loads when nothing is selected (e.g., right after engine switch)
     if (!this.selectedListItem()) return;
@@ -406,9 +404,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.sortBy.set((event.sortField as string) ?? null);
     this.sortDir.set(event.sortOrder === 1 ? 'asc' : 'desc');
 
+    // Single source of truth: only load via onLazyLoad
     this.loadTableData();
   }
 
+  // ── Helpers for encoded selection values ───────────────────────
   private makeValue(type: RelationType, id: string) {
     return `${type}|${id}`;
   }
@@ -420,6 +420,7 @@ export class AppComponent implements OnInit, OnDestroy {
     return { type, id };
   }
 
+  // ── Table helpers (right pane) ─────────────────────────────────
   rowTrackBy(i: number, p: any) {
     return p?.id ?? p?.Id ?? p?.ID ?? i;
   }
@@ -428,6 +429,7 @@ export class AppComponent implements OnInit, OnDestroy {
     return typeof v === 'number';
   }
 
+  // ── Local helpers ──────────────────────────────────────────────
   private relationTypeLabel(t: RelationType) {
     return t === RelationType.View ? 'Sicht' : 'Tabelle';
   }

@@ -252,7 +252,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// SQLite suite (SignalR-driven)
+// Tool Server ↔ Angular UI — basics (SQLite)
 // ───────────────────────────────────────────────────────────────
 test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   test.describe.configure({mode: 'serial'});
@@ -422,6 +422,66 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
 
     await dsl(request, {operation: 'Drop', target: {name: viewName}, drop: {}});
     await waitForListItemHidden(page, viewName);
+  });
+
+  // ───────────────────────────────────────────────────────────────
+  // NEW: Selecting a table triggers exactly one data request
+  // ───────────────────────────────────────────────────────────────
+  test('selecting a table issues a single /tables/<name> request (no duplicates)', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_NoDupReq_${Date.now()}`;
+    // Create a tiny table so there is something to select (no rows needed)
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    // Counters for network activity for the selected table
+    const pathPrefix = `/api/web-viewer/tables/${encodeURIComponent(tableName)}`;
+    let started = 0;
+    let finished = 0;
+    let failed = 0;
+
+    const onReq = (req: any) => { if (req.url().includes(pathPrefix)) started++; };
+    const onFinished = (req: any) => { if (req.url().includes(pathPrefix)) finished++; };
+    const onFailed = (req: any) => { if (req.url().includes(pathPrefix)) failed++; };
+
+    page.on('request', onReq);
+    page.on('requestfinished', onFinished);
+    page.on('requestfailed', onFailed);
+
+    // Select the table → should trigger exactly ONE lazy load
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
+
+    // Wait until table headers are visible (row presence not required)
+    await expectHeaderVisible(page, 'Id');
+    await expectHeaderVisible(page, 'Name');
+
+    // Give a short buffer to catch any trailing duplicate emissions
+    await page.waitForTimeout(300);
+
+    // Assert: exactly one request, finished successfully, none failed
+    expect(started).toBe(1);
+    expect(finished).toBe(1);
+    expect(failed).toBe(0);
+
+    // Cleanup listeners and the table
+    page.off('request', onReq);
+    page.off('requestfinished', onFinished);
+    page.off('requestfailed', onFailed);
+
+    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
   });
 });
 
@@ -604,7 +664,6 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectGroupHeaderVisible(page, 'SICHTEN');
   });
 
-  // append to: e2e/e2e.spec.ts (end of file)
   test.describe('Engine switch clears selection and prevents stale table requests', () => {
     test('no request for previously selected table after switching engine', async ({ page, request, baseURL }) => {
       // Ensure Excel is the current engine and create a sheet
@@ -644,5 +703,4 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       await dsl(request, { operation: 'Drop', target: { name: sheetName }, drop: {} });
     });
   });
-
 });
