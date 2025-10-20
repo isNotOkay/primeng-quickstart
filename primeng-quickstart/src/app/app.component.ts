@@ -1,5 +1,5 @@
 // file: src/app/app.component.ts
-import { Component, computed, inject, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
@@ -12,7 +12,6 @@ import { ButtonDirective } from 'primeng/button';
 
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { EngineType } from './enums/engine-type.enum';
 import { ListItemModel } from './models/list-item.model';
 import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
@@ -24,8 +23,8 @@ import { RelationApiModel } from './models/api/relation.api-model';
 import { RelationType } from './enums/relation-type.enum';
 import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
-import {MessageService} from 'primeng/api';
-import {Toast} from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { Toast } from 'primeng/toast';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -68,10 +67,11 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Engine select (reactive) ───────────────────────────────────
   protected readonly EngineType = EngineType;
   readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
-  private readonly engineSignal = toSignal(this.engineControl.valueChanges, {
-    initialValue: this.engineControl.value,
-  });
-  protected readonly isExcel = computed(() => this.engineSignal() === EngineType.Excel);
+
+  // Use a method so initial value is always correct (no stale computed on first load)
+  protected isExcel(): boolean {
+    return this.engineControl.value === EngineType.Excel;
+  }
 
   // ── Signals / state ────────────────────────────────────────────
   protected readonly listsLoading = signal(true);
@@ -88,10 +88,10 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly sortBy = signal<string | null>(null);
   protected readonly sortDir = signal<'asc' | 'desc'>('asc');
 
-  protected readonly tableKey = computed(() => {
+  protected readonly tableKey = signal(() => {
     const sel = this.selectedListItem();
     return sel ? `${sel.relationType}|${sel.id}` : 'none';
-  });
+  }) as unknown as () => string; // keep existing @for usage; alternative would be computed()
 
   private readonly apiService = inject(ApiService);
   private readonly signalRService = inject(SignalRService);
@@ -236,10 +236,13 @@ export class AppComponent implements OnInit, OnDestroy {
       value: this.makeValue(RelationType.View, it.id),
     }));
 
-    this.allGroups = [
-      { label: 'Tabellen', items: tables },
-      { label: 'Sichten', items: views },
-    ];
+    // Only include "Sichten" when NOT using Excel
+    const groups: Group[] = [{ label: 'Tabellen', items: tables }];
+    if (!this.isExcel()) {
+      groups.push({ label: 'Sichten', items: views });
+    }
+
+    this.allGroups = groups;
 
     this.applyFilter(this.listFilter);
   }
@@ -247,7 +250,12 @@ export class AppComponent implements OnInit, OnDestroy {
   // External filter keeps groups visible; adds placeholder when no matches
   applyFilter(query: string) {
     const q = this.normalize(query);
-    this.groupedOptions = this.allGroups.map((g) => {
+    const isExcel = this.isExcel(); // read current engine
+
+    // IMPORTANT: never show "Sichten" while on Excel
+    const sourceGroups = this.allGroups.filter((g) => !(isExcel && g.label === 'Sichten'));
+
+    this.groupedOptions = sourceGroups.map((g) => {
       const matched = q ? g.items.filter((it) => this.normalize(it.label).includes(q)) : g.items;
 
       const items = matched.length

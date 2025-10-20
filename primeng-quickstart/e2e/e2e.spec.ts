@@ -67,13 +67,11 @@ async function openSelectOverlay(selectRoot: Locator) {
     try {
       await combo.press('Enter', {timeout: 1000});
       return;
-    } catch {
-    }
+    } catch {}
     try {
       await combo.press('Space', {timeout: 1000});
       return;
-    } catch {
-    }
+    } catch {}
   }
 
   // Last resort: click near the top-left of the component
@@ -145,6 +143,20 @@ async function waitForListItemVisible(page: Page, text: string): Promise<Locator
 async function waitForListItemHidden(page: Page, text: string): Promise<void> {
   const item = page.locator('.left-listbox').getByText(text, {exact: true});
   await expect(item).toBeHidden({timeout: UI_TIMEOUT});
+}
+
+/** Helpers for group headers in the left listbox */
+function groupHeader(page: Page, name: string) {
+  return page.locator('.left-listbox li.p-listbox-option-group').filter({ hasText: name });
+}
+async function expectGroupHeaderVisible(page: Page, name: string) {
+  const g = groupHeader(page, name);
+  await expect(g).toHaveCount(1, { timeout: UI_TIMEOUT });
+  await expect(g.first()).toBeVisible({ timeout: UI_TIMEOUT });
+}
+async function expectGroupHeaderHidden(page: Page, name: string) {
+  const g = groupHeader(page, name);
+  await expect(g).toHaveCount(0, { timeout: UI_TIMEOUT });
 }
 
 test.describe.configure({mode: 'serial'});
@@ -496,8 +508,8 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await dsl(request, {
       operation: 'Alter',
       target: {name: sheetName},
-      alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]},
-    });
+      alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]}},
+    );
 
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'NewCol');
@@ -556,5 +568,39 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
 
     await dsl(request, {operation: 'Drop', target: {name: viewName}, drop: {}});
     await waitForListItemHidden(page, viewName);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────
+// Visibility of "Sichten" group (regression tests)
+// ───────────────────────────────────────────────────────────────
+test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  test('initial load with persisted Excel hides "Sichten"', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'excel');       // Persist Excel BEFORE visiting the app
+    await goHome(page, baseURL);             // Initial load
+
+    // Ensure "Sichten" group header does not exist
+    await expectGroupHeaderHidden(page, 'SICHTEN');
+    // And "Tabellen" is still there
+    await expectGroupHeaderVisible(page, 'TABELLEN');
+  });
+
+  test('switching engines toggles "Sichten" visibility', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');      // Start from SQLite
+    await goHome(page, baseURL);
+
+    // On SQLite we expect the group to exist
+    await expectGroupHeaderVisible(page, 'SICHTEN');
+
+    // Switch to Excel -> "Sichten" should disappear
+    await selectEngine(page, 'Excel');
+    await expectGroupHeaderHidden(page, 'SICHTEN');
+    await expectGroupHeaderVisible(page, 'TABELLEN');
+
+    // Switch back to SQLite -> "Sichten" should re-appear
+    await selectEngine(page, 'SQLite');
+    await expectGroupHeaderVisible(page, 'SICHTEN');
   });
 });
