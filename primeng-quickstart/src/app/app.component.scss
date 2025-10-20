@@ -11,3 +11,11 @@
   width: 100%;
   position: relative;
 }
+
+
+.right-panel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
