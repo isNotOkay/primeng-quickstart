@@ -603,4 +603,46 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await selectEngine(page, 'SQLite');
     await expectGroupHeaderVisible(page, 'SICHTEN');
   });
+
+  // append to: e2e/e2e.spec.ts (end of file)
+  test.describe('Engine switch clears selection and prevents stale table requests', () => {
+    test('no request for previously selected table after switching engine', async ({ page, request, baseURL }) => {
+      // Ensure Excel is the current engine and create a sheet
+      await putEngine(request, 'excel');
+      const sheetName = `E2E_XL_Stale_${Date.now()}`;
+      await dsl(request, {
+        operation: 'Create',
+        target: { name: sheetName },
+        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+      });
+
+      await goHome(page, baseURL);
+      await selectEngine(page, 'Excel');
+
+      // Select the sheet so it's definitely "active"
+      await waitForListItemVisible(page, sheetName).then((i) => i.click());
+      await expectHeaderVisible(page, 'Id');
+
+      // Watch for any stale request referencing the Excel sheet after switching
+      let sawStaleRequest = false;
+      const stalePath = `/api/web-viewer/tables/${encodeURIComponent(sheetName)}`;
+      page.on('request', (req) => {
+        if (req.url().includes(stalePath)) {
+          sawStaleRequest = true;
+        }
+      });
+
+      // Switch to SQLite
+      await selectEngine(page, 'SQLite');
+
+      // Give the UI a brief moment where lazy loaders might fire; then assert none hit the stale endpoint
+      await page.waitForTimeout(500);
+      expect(sawStaleRequest).toBeFalsy();
+
+      // Cleanup the created sheet
+      await putEngine(request, 'excel');
+      await dsl(request, { operation: 'Drop', target: { name: sheetName }, drop: {} });
+    });
+  });
+
 });
