@@ -1,3 +1,4 @@
+<!-- file: src/app/app.component.html -->
 <p-toast position="bottom-center"></p-toast>
 
 <!-- Full-page flex column: toolbar on top, splitter fills the rest -->
@@ -32,13 +33,13 @@
     </ng-template>
   </p-toolbar>
 
-
   <div class="splitter-wrapper">
     @if (listsLoading()) {
       <app-loading-indicator></app-loading-indicator>
     }
+
     <p-splitter
-      [style]="{  height: '100%', width: '100%' }"
+      [style]="{ height: '100%', width: '100%' }"
       [panelSizes]="[25, 75]"
       [minSizes]="[15, 10]"
       layout="horizontal"
@@ -46,7 +47,7 @@
       <!-- Left panel -->
       <ng-template #panel>
         <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
-          <!-- External filter with built-in icon (inside the input) -->
+          <!-- External filter -->
           <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
             <p-iconfield iconPosition="left">
               <p-inputicon styleClass="pi pi-search"></p-inputicon>
@@ -63,7 +64,7 @@
             </p-iconfield>
           </div>
 
-          <!-- Grouped Listbox fed by API; internal scroll -->
+          <!-- Grouped Listbox -->
           <p-listbox
             [group]="true"
             [options]="groupedOptions"
@@ -100,29 +101,45 @@
 
       <!-- Right panel -->
       <ng-template #panel>
-        @for (key of [tableKey()]; track key) {
+        @if (renderTable()) {
+
+          <!-- Custom loader (not PrimeNG overlay) -->
+          @if (loadingRows()) {
+            <app-loading-indicator></app-loading-indicator>
+          }
+
           <p-table
             [value]="rows()"
-            [loading]="loadingRows()"
             size="small"
             dataKey="id"
             [rowTrackBy]="rowTrackBy"
             showGridlines
             [resizableColumns]="true"
             columnResizeMode="expand"
+
             [paginator]="true"
             paginatorPosition="bottom"
             [rows]="pageSize()"
             [totalRecords]="totalCount()"
+            [first]="pageIndex() * pageSize()"
             [showCurrentPageReport]="true"
             currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+
             [scrollable]="true"
             scrollHeight="flex"
             [style]="{ flex: '1 1 0' }"
             [tableStyle]="{ width: 'max-content' }"
+
             sortMode="single"
+            [customSort]="true"
+            [sortField]="sortBy() ?? ''"
+            [sortOrder]="sortDir() === 'asc' ? 1 : -1"
+            (sortFunction)="onSort($event)"
+
+            (onPage)="onPage($event)"
+
             [lazy]="true"
-            (onLazyLoad)="onLazyLoad($event)"
+            [lazyLoadOnInit]="false"
           >
             <ng-template pTemplate="header">
               <tr>
@@ -140,8 +157,10 @@
             <ng-template pTemplate="body" let-row>
               <tr>
                 @for (col of columnNames(); track col) {
-                  <td [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
-                      style="font-variant-numeric: tabular-nums">
+                  <td
+                    [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
+                    style="font-variant-numeric: tabular-nums"
+                  >
                     {{ row[col] }}
                   </td>
                 }
@@ -151,7 +170,8 @@
             <ng-template pTemplate="emptymessage">
               <tr>
                 <td [attr.colspan]="columnNames().length || 1">
-                  <div style="padding: 0.75rem">Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.
+                  <div style="padding: 0.75rem">
+                    Keine Daten vorhanden. Bitte wählen Sie links eine Tabelle oder Sicht.
                   </div>
                 </td>
               </tr>
@@ -159,7 +179,6 @@
           </p-table>
         }
       </ng-template>
-
     </p-splitter>
   </div>
 </div>

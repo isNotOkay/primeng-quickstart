@@ -1,30 +1,30 @@
 // file: src/app/app.component.ts
-import { Component, inject, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit, signal, ViewChild} from '@angular/core';
+import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
 
-import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { SplitterModule } from 'primeng/splitter';
-import { SelectModule } from 'primeng/select';
-import { ListboxModule } from 'primeng/listbox';
-import { InputTextModule } from 'primeng/inputtext';
-import { Toolbar } from 'primeng/toolbar';
-import { ButtonDirective } from 'primeng/button';
+import {Table, TableModule} from 'primeng/table';
+import {SplitterModule} from 'primeng/splitter';
+import {SelectModule} from 'primeng/select';
+import {ListboxModule} from 'primeng/listbox';
+import {InputTextModule} from 'primeng/inputtext';
+import {Toolbar} from 'primeng/toolbar';
+import {ButtonDirective} from 'primeng/button';
 
-import { IconField } from 'primeng/iconfield';
-import { InputIcon } from 'primeng/inputicon';
-import { EngineType } from './enums/engine-type.enum';
-import { ListItemModel } from './models/list-item.model';
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
-import { ApiService } from './services/api.service';
-import { CreateOrUpdateRelationEvent, SignalRService } from './services/signalr.service';
-import { NotificationService } from './services/notification.service';
-import { finalize, forkJoin, of, Subscription } from 'rxjs';
-import { RelationApiModel } from './models/api/relation.api-model';
-import { RelationType } from './enums/relation-type.enum';
-import { PagedResultApiModel } from './models/api/paged-result.api-model';
-import { RowModel } from './models/row.model';
-import { Toast } from 'primeng/toast';
-import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
+import {IconField} from 'primeng/iconfield';
+import {InputIcon} from 'primeng/inputicon';
+import {EngineType} from './enums/engine-type.enum';
+import {ListItemModel} from './models/list-item.model';
+import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
+import {ApiService} from './services/api.service';
+import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
+import {NotificationService} from './services/notification.service';
+import {finalize, forkJoin, of, Subscription} from 'rxjs';
+import {RelationApiModel} from './models/api/relation.api-model';
+import {RelationType} from './enums/relation-type.enum';
+import {PagedResultApiModel} from './models/api/paged-result.api-model';
+import {RowModel} from './models/row.model';
+import {Toast} from 'primeng/toast';
+import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -33,6 +33,7 @@ interface ItemOption {
   disabled?: boolean;
   __placeholder?: boolean;
 }
+
 interface Group {
   label: string;
   items: ItemOption[];
@@ -62,18 +63,16 @@ interface Group {
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
 
-  // ── Engine select (reactive) ───────────────────────────────────
   protected readonly EngineType = EngineType;
-  readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
+  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
 
-  // Use a method so initial value is always correct
   protected isExcel(): boolean {
     return this.engineControl.value === EngineType.Excel;
   }
 
   // ── Signals / state ────────────────────────────────────────────
   protected readonly listsLoading = signal(true);
-  protected readonly loadingRows = signal(true);
+  protected readonly loadingRows = signal(false);
   protected readonly loadedTablesAndViews = signal(false);
   protected readonly tableItems = signal<ListItemModel[]>([]);
   protected readonly viewItems = signal<ListItemModel[]>([]);
@@ -85,32 +84,30 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly pageSize = signal(DEFAULT_PAGE_SIZE);
   protected readonly sortBy = signal<string | null>(null);
   protected readonly sortDir = signal<'asc' | 'desc'>('asc');
-
-  // Key used to recreate the table on selection change
-  protected readonly tableKey = signal(() => {
-    const sel = this.selectedListItem();
-    return sel ? `${sel.relationType}|${sel.id}` : 'none';
-  }) as unknown as () => string;
+  protected readonly renderTable = signal(true);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private readonly apiService = inject(ApiService);
+
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
-
   // ── Datenquelle select ─────────────────────────────────────────
-  dataSources: { label: string; value: EngineType }[] = [
-    { label: 'SQLite', value: EngineType.Sqlite },
-    { label: 'Excel', value: EngineType.Excel },
-  ];
 
+  dataSources: { label: string; value: EngineType }[] = [
+    {label: 'SQLite', value: EngineType.Sqlite},
+    {label: 'Excel', value: EngineType.Excel},
+  ];
   // ── Listbox (reactive) ─────────────────────────────────────────
-  readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
+
+  readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
   private allGroups: Group[] = [];
   groupedOptions: Group[] = [];
   listFilter = '';
 
-  constructor() {}
+  constructor() {
+  }
 
   ngOnInit() {
     this.signalRService.start();
@@ -129,7 +126,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.signalRService.onDeleteRelation$.subscribe((event) => {
         const wasSelected = this.selectedListItem()?.id === event.name;
         this.loadTablesAndViews();
-        if (wasSelected) this.listControl.setValue(null, { emitEvent: false });
+        if (wasSelected) this.listControl.setValue(null, {emitEvent: false});
         const kind = this.relationTypeLabel(event.relationType);
         this.notificationService.info(`${kind} "${event.name}" wurde gelöscht.`);
       }),
@@ -139,9 +136,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
       next: (dto) => {
-        this.engineControl.setValue(dto.engine, { emitEvent: false });
+        this.engineControl.setValue(dto.engine, {emitEvent: false});
         this.loadedTablesAndViews.set(false);
-        this.clearSelectedListItem(); // ensure nothing selected before initial load
+        this.clearSelectedListItem();
         this.loadTablesAndViews();
       },
       error: () => {
@@ -154,22 +151,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.engineControl.valueChanges.subscribe((engine) => {
       if (engine == null) return;
 
-      // ---- Immediate hard reset to avoid stale requests ----
-      this.loadRowsSubscription?.unsubscribe(); // cancel in-flight data load
-      this.clearSelectedListItem(); // clear selection + table data
-      this.listControl.setValue(null, { emitEvent: false }); // clear UI selection
-      this.groupedOptions = []; // avoid showing old groups momentarily
+      this.loadRowsSubscription?.unsubscribe();
+      this.clearSelectedListItem();
+      this.listControl.setValue(null, {emitEvent: false});
+      this.groupedOptions = [];
       this.allGroups = [];
       this.listsLoading.set(true);
       this.loadedTablesAndViews.set(false);
-      this.resetTableState(); // reset paginator/sort in the UI
-      // ------------------------------------------------------
+      this.resetTableState();
+      this.remountTable(); // ensure next table is fresh
 
       this.apiService.setEngine(engine).subscribe({
-        next: () => {
-          // Reload tables/views for the chosen engine
-          this.loadTablesAndViews();
-        },
+        next: () => this.loadTablesAndViews(),
         error: () => {
           this.notificationService.error('Fehler beim Speichern der Datenquelle.');
           this.listsLoading.set(false);
@@ -181,20 +174,20 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listControl.valueChanges.subscribe((val) => {
       if (!val) {
         this.selectedListItem.set(null);
+        this.remountTable(); // unmount any previous table
         return;
       }
       const sel = this.parseSelection(val);
       const item = this.findInLists(sel.type, sel.id);
-      if (item) {
-        this.selectListItem(item);
-      }
+      if (item) this.selectListItem(item);
     });
   }
 
   ngOnDestroy(): void {
     this.loadRowsSubscription?.unsubscribe();
     for (const s of this.subscriptions) s.unsubscribe();
-    this.signalRService.stop().catch(() => {});
+    this.signalRService.stop().catch(() => {
+    });
   }
 
   protected onDownload(): void {
@@ -224,6 +217,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ── Build options from API data and apply current filter ───────
+
   private rebuildGroupsFromApi(): void {
     const tables: ItemOption[] = this.tableItems().map((it) => ({
       label: it.label,
@@ -235,16 +229,13 @@ export class AppComponent implements OnInit, OnDestroy {
       value: this.makeValue(RelationType.View, it.id),
     }));
 
-    const groups: Group[] = [{ label: 'Tabellen', items: tables }];
-    if (!this.isExcel()) {
-      groups.push({ label: 'Sichten', items: views });
-    }
+    const groups: Group[] = [{label: 'Tabellen', items: tables}];
+    if (!this.isExcel()) groups.push({label: 'Sichten', items: views});
 
     this.allGroups = groups;
     this.applyFilter(this.listFilter);
   }
 
-  // External filter keeps groups visible; adds placeholder when no matches
   applyFilter(query: string) {
     const q = this.normalize(query);
     const isExcel = this.isExcel();
@@ -256,9 +247,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const items = matched.length
         ? matched
-        : [{ label: 'Keine Treffer', value: null, disabled: true, __placeholder: true }];
+        : [{label: 'Keine Treffer', value: null, disabled: true, __placeholder: true}];
 
-      return { label: g.label, items };
+      return {label: g.label, items};
     });
   }
 
@@ -268,12 +259,22 @@ export class AppComponent implements OnInit, OnDestroy {
     return (s || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
+  // Make sure the table is recreated on selection changes to reset column sizes.
+  private remountTable() {
+    this.renderTable.set(false);
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      this.renderTable.set(true);
+    }, 0);
+  }
+
   // ── API loading for tables & views ─────────────────────────────
   private loadTablesAndViews(createRelationEvent?: CreateOrUpdateRelationEvent): void {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();
-    const views$ = this.isExcel() ? of({ items: [] as RelationApiModel[] }) : this.apiService.loadViews();
+    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
 
     forkJoin([tables$, views$]).subscribe({
       next: ([tablesResponse, viewsResponse]) => {
@@ -293,11 +294,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
         if (listItem) {
           this.selectListItem(listItem);
-          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), { emitEvent: false });
+          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), {emitEvent: false});
         } else {
-          // ensure selection is cleared after reload
           this.clearSelectedListItem();
-          this.listControl.setValue(null, { emitEvent: false });
+          this.listControl.setValue(null, {emitEvent: false});
         }
       },
       error: () => {
@@ -325,9 +325,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.selectedListItem.set(item);
     this.updateColumnNames();
 
-    // Reset sort & paging so stale sort fields don't hit the backend.
-    // IMPORTANT: Do not call loadTableData() here. Let the table's onLazyLoad drive data loading.
+    // Reset paging/sort, then remount and load
     this.resetTableState();
+    this.remountTable();
+    this.loadTableData();
   }
 
   private updateColumnNames(): void {
@@ -341,21 +342,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.totalCount.set(0);
     this.loadingRows.set(false);
     this.resetTableState();
+    this.remountTable();
   }
 
-  /** Clear sorting/filters and reset paging & local state */
+  /** Reset paging & sort state and keep paginator UI in sync */
   private resetTableState(): void {
-    // sync local paging/sort state
     this.pageIndex.set(DEFAULT_PAGE_INDEX);
     this.pageSize.set(DEFAULT_PAGE_SIZE);
     this.sortBy.set(null);
     this.sortDir.set('asc');
 
-    // Use a single PrimeNG reset. Avoid calling both clear() and reset() to prevent duplicate lazy loads.
-    try {
-      this.dataTable?.reset();
-    } catch {
-      /* some versions may not have reset(); best-effort */
+    if (this.dataTable) {
+      (this.dataTable as any).first = 0;
     }
   }
 
@@ -382,7 +380,6 @@ export class AppComponent implements OnInit, OnDestroy {
           this.totalCount.set((result.total as number) ?? 0);
         },
         error: () => {
-          // If engine switched mid-flight, just clear and show a toast
           this.rows.set([]);
           this.totalCount.set(0);
           this.notificationService.error('Fehler beim Laden der Daten.');
@@ -390,25 +387,27 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
-  // PrimeNG lazy load handler (paging + sorting)
-  onLazyLoad(event: TableLazyLoadEvent) {
-    // Ignore lazy loads when nothing is selected (e.g., right after engine switch)
-    if (!this.selectedListItem()) return;
-
-    const newSize = event.rows ?? this.pageSize();
-    const newFirst = event.first ?? 0;
-    const newIndex = Math.floor(newFirst / newSize);
+  onPage(event: any) {
+    const newSize = event?.rows ?? this.pageSize();
+    const newFirst = event?.first ?? 0;
+    const newIndex = Math.floor(newFirst / Math.max(1, newSize));
 
     this.pageSize.set(newSize);
     this.pageIndex.set(newIndex);
-    this.sortBy.set((event.sortField as string) ?? null);
-    this.sortDir.set(event.sortOrder === 1 ? 'asc' : 'desc');
-
-    // Single source of truth: only load via onLazyLoad
     this.loadTableData();
   }
 
-  // ── Helpers for encoded selection values ───────────────────────
+  onSort(event: any) {
+    this.sortBy.set(event?.field ?? null);
+    this.sortDir.set(event?.order === 1 ? 'asc' : 'desc');
+
+    this.pageIndex.set(0);
+    if (this.dataTable) {
+      (this.dataTable as any).first = 0;
+    }
+    this.loadTableData();
+  }
+
   private makeValue(type: RelationType, id: string) {
     return `${type}|${id}`;
   }
@@ -417,10 +416,9 @@ export class AppComponent implements OnInit, OnDestroy {
     const [typeStr, ...rest] = v.split('|');
     const id = rest.join('|');
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
-    return { type, id };
+    return {type, id};
   }
 
-  // ── Table helpers (right pane) ─────────────────────────────────
   rowTrackBy(i: number, p: any) {
     return p?.id ?? p?.Id ?? p?.ID ?? i;
   }
@@ -429,7 +427,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return typeof v === 'number';
   }
 
-  // ── Local helpers ──────────────────────────────────────────────
   private relationTypeLabel(t: RelationType) {
     return t === RelationType.View ? 'Sicht' : 'Tabelle';
   }
