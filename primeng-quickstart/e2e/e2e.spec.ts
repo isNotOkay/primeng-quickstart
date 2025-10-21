@@ -913,5 +913,26 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     }
   });
 
+  test('clearable search: X button appears, clears input, and keeps focus', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
 
+    const input = page.locator('#list-filter-input');
+    await expect(input).toBeVisible({ timeout: UI_TIMEOUT });
+
+    // Clear button should not be in the DOM when empty
+    const clearBtn = page.getByRole('button', { name: 'Suche löschen' });
+    await expect(clearBtn).toHaveCount(0);
+
+    // Type something -> clear button appears
+    await input.fill(`NO_MATCH_${Date.now()}`);
+    await expect(clearBtn).toBeVisible({ timeout: UI_TIMEOUT });
+
+    // Click clear -> input empty, button disappears, focus stays on input
+    await clearBtn.click();
+    await expect(input).toHaveValue('');
+    await expect(clearBtn).toHaveCount(0);
+    await expect(input).toBeFocused();
+  });
 });
