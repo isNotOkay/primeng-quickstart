@@ -113,32 +113,24 @@
               [value]="rows()"
               size="small"
               dataKey="id"
-              [rowTrackBy]="rowTrackBy"
               showGridlines
-              [resizableColumns]="true"
               columnResizeMode="expand"
-
-              [paginator]="true"
               paginatorPosition="bottom"
+              currentPageReportTemplate="{first} bis {last} von {totalRecords}"
+              scrollHeight="flex"
+              sortMode="single"
+              [rowTrackBy]="rowTrackBy"
+              [resizableColumns]="true"
+              [paginator]="true"
               [rows]="pageSize()"
               [totalRecords]="totalCount()"
               [first]="pageIndex() * pageSize()"
               [showCurrentPageReport]="true"
-              currentPageReportTemplate="{first} bis {last} von {totalRecords}"
-
               [scrollable]="true"
-              scrollHeight="flex"
               [style]="{ flex: '1 1 0' }"
               [tableStyle]="{ width: 'max-content' }"
-
-              sortMode="single"
-              [customSort]="true"
-              [sortField]="sortBy() ?? ''"
-              [sortOrder]="sortDir() === 'asc' ? 1 : -1"
-              (sortFunction)="onSort($event)"
-
               (onPage)="onPage($event)"
-
+              (onSort)="onSort($event)"
               [lazy]="true"
               [lazyLoadOnInit]="false"
             >

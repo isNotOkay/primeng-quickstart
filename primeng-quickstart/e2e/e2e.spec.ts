@@ -756,4 +756,56 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       await search.fill('');
     });
   });
+  test('sorting sends sortBy/sortDir when clicking headers (server-side sorting)', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_Sort_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+    await expectHeaderVisible(page, 'Name');
+
+    const pathBase = `/api/web-viewer/tables/${encodeURIComponent(tableName)}`;
+
+    // Click "Name" header and expect a request with the given sortDir
+    async function clickHeaderAndExpect(dir: 'asc' | 'desc') {
+      const wait = page.waitForResponse(
+        (res) =>
+          res.url().includes(pathBase) &&
+          res.url().includes('sortBy=Name') &&
+          res.url().includes(`sortDir=${dir}`),
+        { timeout: UI_TIMEOUT }
+      );
+
+      let header = page.getByRole('columnheader', { name: 'Name', exact: true });
+      if ((await header.count()) === 0) {
+        header = page.locator('p-table thead th').filter({ hasText: 'Name' });
+      }
+      await header.click();
+
+      const resp = await wait;
+      expect(resp.ok()).toBeTruthy();
+    }
+
+    // First click -> asc, second click -> desc
+    await clickHeaderAndExpect('asc');
+    await clickHeaderAndExpect('desc');
+
+    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+  });
+
 });
