@@ -1,5 +1,14 @@
 // file: src/app/app.component.ts
-import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { Table, TableModule } from 'primeng/table';
@@ -11,6 +20,9 @@ import { Toolbar } from 'primeng/toolbar';
 import { ButtonDirective } from 'primeng/button';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
+import { Toast } from 'primeng/toast';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 
 import { EngineType } from './enums/engine-type.enum';
 import { ListItemModel } from './models/list-item.model';
@@ -23,7 +35,6 @@ import { RelationApiModel } from './models/api/relation.api-model';
 import { RelationType } from './enums/relation-type.enum';
 import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
-import { Toast } from 'primeng/toast';
 import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
 import { TableStateService } from './services/table-state.service';
 
@@ -34,7 +45,6 @@ interface ItemOption {
   disabled?: boolean;
   __placeholder?: boolean;
 }
-
 interface Group {
   label: string;
   items: ItemOption[];
@@ -56,10 +66,12 @@ interface Group {
     IconField,
     InputIcon,
     Toast,
+    ConfirmDialog,
     LoadingIndicator,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
+  providers: [ConfirmationService],
 })
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
@@ -93,9 +105,11 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);
   private readonly tableState = inject(TableStateService);
+  private readonly confirmationService = inject(ConfirmationService);
 
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
+  private connectionDialogShown = false;
 
   // ── Datenquelle select ─────────────────────────────────────────
   dataSources: { label: string; value: EngineType }[] = [
@@ -134,6 +148,11 @@ export class AppComponent implements OnInit, OnDestroy {
       }),
     );
 
+    // NEW: non-cancelable reload dialog when SignalR connection is lost
+    this.subscriptions.push(
+      this.signalRService.onConnectionLost$.subscribe(() => this.showReloadConfirm()),
+    );
+
     // Load persisted engine
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
@@ -153,7 +172,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.engineControl.valueChanges.subscribe((engine) => {
       if (engine == null) return;
 
-      // Save current widths before tearing down
+      // Save current widths before switching away
       this.saveCurrentTableWidths();
 
       this.loadRowsSubscription?.unsubscribe();
@@ -242,7 +261,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.applyFilter(this.listFilter);
   }
 
-  // Keep single grouped listbox; use a non-null sentinel value for placeholders
+  // Keep single grouped listbox; use a non-null sentinel for placeholders
   applyFilter(query: string) {
     const q = this.normalize(query);
     const isExcel = this.isExcel();
@@ -266,7 +285,7 @@ export class AppComponent implements OnInit, OnDestroy {
         : [
           {
             label: emptyLabel,
-            value: `__placeholder__:${g.label}`, // non-null sentinel
+            value: `__placeholder__:${g.label}`,
             disabled: true,
             __placeholder: true,
           },
@@ -286,10 +305,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private remountTable() {
     this.renderTable.set(false);
     this.cdr.detectChanges();
-
-    setTimeout(() => {
-      this.renderTable.set(true);
-    }, 0);
+    setTimeout(() => this.renderTable.set(true), 0);
   }
 
   // ── API loading for tables & views ─────────────────────────────
@@ -358,7 +374,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private clearSelectedListItem(): void {
-    // Save widths of the current table before clearing
+    // Save widths before clearing
     this.saveCurrentTableWidths();
 
     this.selectedListItem.set(null);
@@ -422,7 +438,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadTableData();
   }
 
-  // Use server-side sorting via (onSort)
+  // Server-side sorting
   onSort(event: any) {
     this.sortBy.set(event?.field ?? null);
     this.sortDir.set(event?.order === 1 ? 'asc' : 'desc');
@@ -475,7 +491,7 @@ export class AppComponent implements OnInit, OnDestroy {
     ths.forEach((th, i) => {
       const name = cols[i];
       if (!name) return;
-      const px = Math.round(th.getBoundingClientRect().width); // rendered width in px
+      const px = Math.round(th.getBoundingClientRect().width);
       if (px > 0) widths[name] = `${px}px`;
     });
 
@@ -486,11 +502,31 @@ export class AppComponent implements OnInit, OnDestroy {
   clearSearch(): void {
     this.listFilter = '';
     this.applyFilter('');
-    // re-focus the input for quick new search
     setTimeout(() => this.filterInput?.nativeElement?.focus(), 0);
   }
 
-  // ── Helpers ────────────────────────────────────────────────────
+  // ── Connection lost dialog ─────────────────────────────────────
+  private showReloadConfirm(): void {
+    if (this.connectionDialogShown) return;
+    this.connectionDialogShown = true;
+
+    this.confirmationService.confirm({
+      key: 'conn-lost',
+      header: 'Verbindung getrennt',
+      message: 'Die Verbindung zum Server wurde unterbrochen. Bitte laden Sie die Seite neu.',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Seite neu laden',
+      rejectVisible: false,
+      closable: false,
+      closeOnEscape: false,
+      dismissableMask: false,
+      defaultFocus: 'accept',
+      acceptButtonStyleClass: 'p-button-primary',
+      accept: () => location.reload(),
+    });
+  }
+
+  // ── Misc helpers ───────────────────────────────────────────────
   private makeValue(type: RelationType, id: string) {
     return `${type}|${id}`;
   }

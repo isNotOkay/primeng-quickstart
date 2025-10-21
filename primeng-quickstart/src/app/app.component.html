@@ -1,6 +1,15 @@
 <!-- file: src/app/app.component.html -->
 <p-toast position="bottom-center"></p-toast>
 
+<!-- Non-cancelable ConfirmDialog shown when SignalR is lost -->
+<p-confirmdialog
+  [key]="'conn-lost'"
+  [rejectVisible]="false"
+  [closable]="false"
+  [closeOnEscape]="false"
+  [dismissableMask]="false"
+></p-confirmdialog>
+
 <!-- Full-page flex column: toolbar on top, splitter fills the rest -->
 <div style="height: 100vh; width: 100%; display: flex; flex-direction: column">
   <!-- Global toolbar -->
@@ -128,7 +137,6 @@
         <div class="right-panel">
           @if (renderTable()) {
 
-            <!-- Custom loader (not PrimeNG overlay) -->
             @if (loadingRows()) {
               <app-loading-indicator></app-loading-indicator>
             }

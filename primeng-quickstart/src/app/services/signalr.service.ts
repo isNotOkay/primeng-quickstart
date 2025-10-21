@@ -6,9 +6,8 @@ import { RelationType } from '../enums/relation-type.enum';
 export interface CreateOrUpdateRelationEvent {
   relationType: RelationType;
   name: string;
-  created: boolean; // NEW
+  created: boolean;
 }
-
 export interface DeleteRelationEvent {
   relationType: RelationType;
   name: string;
@@ -20,24 +19,35 @@ export class SignalRService {
 
   private createOrUpdateRelationSubject = new Subject<CreateOrUpdateRelationEvent>();
   private deleteRelationSubject = new Subject<DeleteRelationEvent>();
+  private connectionLostSubject = new Subject<void>();          // NEW
 
   /** Emits when the backend confirms a created/updated table/view */
   readonly onCreateOrUpdateRelation$: Observable<CreateOrUpdateRelationEvent> =
     this.createOrUpdateRelationSubject.asObservable();
 
   /** Emits when the backend confirms a deleted table/view */
-  readonly onDeleteRelation$: Observable<DeleteRelationEvent> = this.deleteRelationSubject.asObservable();
+  readonly onDeleteRelation$: Observable<DeleteRelationEvent> =
+    this.deleteRelationSubject.asObservable();
+
+  /** Emits once the hub is permanently closed (after auto-reconnect gives up) */
+  readonly onConnectionLost$: Observable<void> = this.connectionLostSubject.asObservable(); // NEW
 
   start(): void {
     if (this.hub?.state === signalR.HubConnectionState.Connected) return;
 
-    this.hub = new signalR.HubConnectionBuilder().withUrl('/hubs/notifications').withAutomaticReconnect().build();
+    // signalr.service.ts  (inside start())
+    this.hub = new signalR.HubConnectionBuilder()
+      .withUrl('/hubs/notifications')
+      // retry at 0s, 2s, 5s, then give up (~7s total instead of ~42s)
+      .withAutomaticReconnect([0, 2000, 5000])
+      .build();
+
 
     // Canonical event (create or update)
     this.hub.on('CreateOrUpdateRelation', (payload: any) => {
       const relationType = (payload?.relationType ?? payload?.type ?? '').toString().toLowerCase() as RelationType;
       const name = (payload?.name ?? '').toString();
-      const created = !!payload?.created; // NEW
+      const created = !!payload?.created;
 
       if ((relationType === 'table' || relationType === 'view') && name) {
         this.createOrUpdateRelationSubject.next({ relationType, name, created });
@@ -54,10 +64,14 @@ export class SignalRService {
       }
     });
 
+    // When automatic reconnect finally gives up, onclose fires -> notify app
+    this.hub.onclose(() => {
+      this.connectionLostSubject.next();
+    });
+
     this.hub.start().catch((err) => console.error('SignalR start error', err));
   }
 
-  /** Optional helpers */
   isConnected(): boolean {
     return this.hub?.state === signalR.HubConnectionState.Connected;
   }
