@@ -807,19 +807,18 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
-
-  test('column widths persist across table switches (session cache)', async ({page, request, baseURL}) => {
+  test('column widths persist; new column gets cached after first resize', async ({ page, request, baseURL }) => {
     await putEngine(request, 'sqlite');
 
-    const t1 = `E2E_Width_A_${Date.now()}`;
-    const t2 = `E2E_Width_B_${Date.now()}`;
+    const t1 = `E2E_Width_NewCol_A_${Date.now()}`;
+    const t2 = `E2E_Width_NewCol_B_${Date.now()}`;
 
-    // Create two tiny tables so we can switch between them
+    // Create two small tables
     for (const name of [t1, t2]) {
       await dsl(request, {
         operation: 'Create',
-        target: {name},
-        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
+        target: { name },
+        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }, { name: 'Name', type: 'TEXT' }] },
       });
     }
 
@@ -831,56 +830,88 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectHeaderVisible(page, 'Name');
 
     // Helpers
-    const headerLocator = (col: string) => {
-      const byRole = page.getByRole('columnheader', {name: col, exact: true});
-      return byRole.count().then((n) => (n > 0 ? byRole.first() : page.locator('p-table thead th').filter({hasText: col}).first()));
+    const headerLocator = async (col: string) => {
+      const byRole = page.getByRole('columnheader', { name: col, exact: true });
+      if ((await byRole.count()) > 0) return byRole.first();
+      return page.locator('p-table thead th').filter({ hasText: col }).first();
     };
     const getHeaderWidth = async (col: string) => {
       const th = await headerLocator(col);
-      await expect(th).toBeVisible({timeout: UI_TIMEOUT});
-      return await th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
+      await expect(th).toBeVisible({ timeout: UI_TIMEOUT });
+      return th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
     };
     const dragResizer = async (col: string, deltaX: number) => {
       const th = await headerLocator(col);
       const resizer = th.locator('.p-column-resizer, [data-pc-section="columnresizer"]');
       const use = (await resizer.count()) > 0 ? resizer.first() : th;
-
       const box = await use.boundingBox();
       if (!box) throw new Error('Could not determine resizer bounding box');
-
       const startX = box.x + (use === th ? box.width - 2 : box.width / 2);
       const startY = box.y + box.height / 2;
-
       await page.mouse.move(startX, startY);
       await page.mouse.down();
       await page.mouse.move(startX + deltaX, startY);
       await page.mouse.up();
     };
 
-    // Measure -> Resize -> Measure
-    const wBefore = await getHeaderWidth('Name');
-    await dragResizer('Name', 100); // drag ~100px to the right
-    // give the component a tick to emit (onColResize) and save in state
+    // Resize "Name" once and verify it sticks after switching away/back
+    const wNameBefore = await getHeaderWidth('Name');
+    await dragResizer('Name', 100);
     await page.waitForTimeout(50);
-    const wAfter = await getHeaderWidth('Name');
-    expect(wAfter).toBeGreaterThan(wBefore + 30); // resized noticeably
+    const wNameAfter = await getHeaderWidth('Name');
+    expect(wNameAfter).toBeGreaterThan(wNameBefore + 30);
 
-    // Switch away and back
     await waitForListItemVisible(page, t2).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
     await waitForListItemVisible(page, t1).then((i) => i.click());
     await expectHeaderVisible(page, 'Name');
 
-    const wBack = await getHeaderWidth('Name');
+    const wNameBack = await getHeaderWidth('Name');
+    expect(Math.abs(wNameBack - wNameAfter)).toBeLessThanOrEqual(6);
 
-    // Should restore to (almost) the same width; allow a small tolerance
-    expect(Math.abs(wBack - wAfter)).toBeLessThanOrEqual(5);
+    // ── Extra step: add a new column, ensure old widths stay, then cache new column after first resize ──
+    const newCol = 'AddedCol';
+    await dsl(request, {
+      operation: 'Alter',
+      target: { name: t1 },
+      alter: { actions: [{ addColumn: { name: newCol, type: 'TEXT' } }] },
+    });
+
+    await expectHeaderVisible(page, newCol);
+
+    // Old column ("Name") should retain width
+    const wNamePostAdd = await getHeaderWidth('Name');
+    expect(Math.abs(wNamePostAdd - wNameAfter)).toBeLessThanOrEqual(6);
+
+    // New column starts with some auto width (>0)
+    const wNewDefault = await getHeaderWidth(newCol);
+    expect(wNewDefault).toBeGreaterThan(20);
+
+    // Resize new column and ensure width increases and is cached
+    await dragResizer(newCol, 120);
+    await page.waitForTimeout(50);
+    const wNewAfter = await getHeaderWidth(newCol);
+    expect(wNewAfter).toBeGreaterThan(wNewDefault + 40);
+
+    // Switch away and back → both "Name" and the *new* column should keep widths
+    await waitForListItemVisible(page, t2).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+
+    await waitForListItemVisible(page, t1).then((i) => i.click());
+    await expectHeaderVisible(page, newCol);
+
+    const wNameFinal = await getHeaderWidth('Name');
+    const wNewFinal = await getHeaderWidth(newCol);
+
+    expect(Math.abs(wNameFinal - wNameAfter)).toBeLessThanOrEqual(6);
+    expect(Math.abs(wNewFinal - wNewAfter)).toBeLessThanOrEqual(6);
 
     // Cleanup
     for (const name of [t1, t2]) {
-      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+      await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
     }
   });
+
 
 });
