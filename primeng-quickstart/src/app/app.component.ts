@@ -1,30 +1,30 @@
 // file: src/app/app.component.ts
-import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit, signal, ViewChild} from '@angular/core';
-import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
-import {Table, TableModule} from 'primeng/table';
-import {SplitterModule} from 'primeng/splitter';
-import {SelectModule} from 'primeng/select';
-import {ListboxModule} from 'primeng/listbox';
-import {InputTextModule} from 'primeng/inputtext';
-import {Toolbar} from 'primeng/toolbar';
-import {ButtonDirective} from 'primeng/button';
+import { Table, TableModule } from 'primeng/table';
+import { SplitterModule } from 'primeng/splitter';
+import { SelectModule } from 'primeng/select';
+import { ListboxModule } from 'primeng/listbox';
+import { InputTextModule } from 'primeng/inputtext';
+import { Toolbar } from 'primeng/toolbar';
+import { ButtonDirective } from 'primeng/button';
 
-import {IconField} from 'primeng/iconfield';
-import {InputIcon} from 'primeng/inputicon';
-import {EngineType} from './enums/engine-type.enum';
-import {ListItemModel} from './models/list-item.model';
-import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
-import {ApiService} from './services/api.service';
-import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
-import {NotificationService} from './services/notification.service';
-import {finalize, forkJoin, of, Subscription} from 'rxjs';
-import {RelationApiModel} from './models/api/relation.api-model';
-import {RelationType} from './enums/relation-type.enum';
-import {PagedResultApiModel} from './models/api/paged-result.api-model';
-import {RowModel} from './models/row.model';
-import {Toast} from 'primeng/toast';
-import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
+import { IconField } from 'primeng/iconfield';
+import { InputIcon } from 'primeng/inputicon';
+import { EngineType } from './enums/engine-type.enum';
+import { ListItemModel } from './models/list-item.model';
+import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
+import { ApiService } from './services/api.service';
+import { CreateOrUpdateRelationEvent, SignalRService } from './services/signalr.service';
+import { NotificationService } from './services/notification.service';
+import { finalize, forkJoin, of, Subscription } from 'rxjs';
+import { RelationApiModel } from './models/api/relation.api-model';
+import { RelationType } from './enums/relation-type.enum';
+import { PagedResultApiModel } from './models/api/paged-result.api-model';
+import { RowModel } from './models/row.model';
+import { Toast } from 'primeng/toast';
+import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -64,7 +64,7 @@ export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
 
   protected readonly EngineType = EngineType;
-  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
+  readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
 
   protected isExcel(): boolean {
     return this.engineControl.value === EngineType.Excel;
@@ -96,18 +96,17 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Datenquelle select ─────────────────────────────────────────
 
   dataSources: { label: string; value: EngineType }[] = [
-    {label: 'SQLite', value: EngineType.Sqlite},
-    {label: 'Excel', value: EngineType.Excel},
+    { label: 'SQLite', value: EngineType.Sqlite },
+    { label: 'Excel', value: EngineType.Excel },
   ];
   // ── Listbox (reactive) ─────────────────────────────────────────
 
-  readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
+  readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
   private allGroups: Group[] = [];
   groupedOptions: Group[] = [];
   listFilter = '';
 
-  constructor() {
-  }
+  constructor() {}
 
   ngOnInit() {
     this.signalRService.start();
@@ -126,7 +125,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.signalRService.onDeleteRelation$.subscribe((event) => {
         const wasSelected = this.selectedListItem()?.id === event.name;
         this.loadTablesAndViews();
-        if (wasSelected) this.listControl.setValue(null, {emitEvent: false});
+        if (wasSelected) this.listControl.setValue(null, { emitEvent: false });
         const kind = this.relationTypeLabel(event.relationType);
         this.notificationService.info(`${kind} "${event.name}" wurde gelöscht.`);
       }),
@@ -136,7 +135,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listsLoading.set(true);
     this.apiService.getEngine().subscribe({
       next: (dto) => {
-        this.engineControl.setValue(dto.engine, {emitEvent: false});
+        this.engineControl.setValue(dto.engine, { emitEvent: false });
         this.loadedTablesAndViews.set(false);
         this.clearSelectedListItem();
         this.loadTablesAndViews();
@@ -153,7 +152,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       this.loadRowsSubscription?.unsubscribe();
       this.clearSelectedListItem();
-      this.listControl.setValue(null, {emitEvent: false});
+      this.listControl.setValue(null, { emitEvent: false });
       this.groupedOptions = [];
       this.allGroups = [];
       this.listsLoading.set(true);
@@ -186,8 +185,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.loadRowsSubscription?.unsubscribe();
     for (const s of this.subscriptions) s.unsubscribe();
-    this.signalRService.stop().catch(() => {
-    });
+    this.signalRService.stop().catch(() => {});
   }
 
   protected onDownload(): void {
@@ -229,27 +227,45 @@ export class AppComponent implements OnInit, OnDestroy {
       value: this.makeValue(RelationType.View, it.id),
     }));
 
-    const groups: Group[] = [{label: 'Tabellen', items: tables}];
-    if (!this.isExcel()) groups.push({label: 'Sichten', items: views});
+    const groups: Group[] = [{ label: 'Tabellen', items: tables }];
+    if (!this.isExcel()) groups.push({ label: 'Sichten', items: views });
 
     this.allGroups = groups;
     this.applyFilter(this.listFilter);
   }
 
+  // ✅ First option: keep single grouped listbox; use a non-null sentinel value for placeholders
   applyFilter(query: string) {
     const q = this.normalize(query);
     const isExcel = this.isExcel();
 
+    // Hide "Sichten" group for Excel as before
     const sourceGroups = this.allGroups.filter((g) => !(isExcel && g.label === 'Sichten'));
 
     this.groupedOptions = sourceGroups.map((g) => {
+      const hadAnyItems = g.items.length > 0;
       const matched = q ? g.items.filter((it) => this.normalize(it.label).includes(q)) : g.items;
+
+      // Different placeholder depending on why it's empty
+      const emptyLabel = hadAnyItems
+        ? 'Keine Ergebnisse gefunden.' // user filtered, but nothing matched
+        : g.label === 'Tabellen'
+          ? 'Keine Tabellen vorhanden.'
+          : 'Keine Sichten vorhanden.'; // only shown on SQLite
 
       const items = matched.length
         ? matched
-        : [{label: 'Keine Treffer', value: null, disabled: true, __placeholder: true}];
+        : [
+          {
+            label: emptyLabel,
+            // IMPORTANT: non-null sentinel that will never equal the control value
+            value: `__placeholder__:${g.label}`,
+            disabled: true,
+            __placeholder: true,
+          },
+        ];
 
-      return {label: g.label, items};
+      return { label: g.label, items };
     });
   }
 
@@ -274,7 +290,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();
-    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
+    const views$ = this.isExcel() ? of({ items: [] as RelationApiModel[] }) : this.apiService.loadViews();
 
     forkJoin([tables$, views$]).subscribe({
       next: ([tablesResponse, viewsResponse]) => {
@@ -287,17 +303,16 @@ export class AppComponent implements OnInit, OnDestroy {
 
         let listItem: ListItemModel | null = null;
         if (createRelationEvent) {
-          const type =
-            createRelationEvent.relationType === RelationType.View ? RelationType.View : RelationType.Table;
+          const type = createRelationEvent.relationType === RelationType.View ? RelationType.View : RelationType.Table;
           listItem = this.findInLists(type, createRelationEvent.name);
         }
 
         if (listItem) {
           this.selectListItem(listItem);
-          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), {emitEvent: false});
+          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), { emitEvent: false });
         } else {
           this.clearSelectedListItem();
-          this.listControl.setValue(null, {emitEvent: false});
+          this.listControl.setValue(null, { emitEvent: false });
         }
       },
       error: () => {
@@ -416,7 +431,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const [typeStr, ...rest] = v.split('|');
     const id = rest.join('|');
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
-    return {type, id};
+    return { type, id };
   }
 
   rowTrackBy(i: number, p: any) {
