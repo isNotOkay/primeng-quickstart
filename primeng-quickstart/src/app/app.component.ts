@@ -1,4 +1,3 @@
-// file: src/app/app.component.ts
 import {
   ChangeDetectorRef,
   Component,
@@ -50,6 +49,8 @@ interface Group {
   items: ItemOption[];
 }
 
+type HubStatus = 'connecting' | 'connected' | 'failed';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -84,6 +85,10 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.engineControl.value === EngineType.Excel;
   }
 
+  // ── App boot/connection gating ─────────────────────────────────
+  /** 'connecting' → show full-screen loader; 'connected' → render UI; 'failed' → show only confirm dialog */
+  protected readonly hubStatus = signal<HubStatus>('connecting');
+
   // ── Signals / state ────────────────────────────────────────────
   protected readonly listsLoading = signal(true);
   protected readonly loadingRows = signal(false);
@@ -110,6 +115,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
   private connectionDialogShown = false;
+  private reconnectTimer: any = null;
 
   // ── Datenquelle select ─────────────────────────────────────────
   dataSources: { label: string; value: EngineType }[] = [
@@ -126,8 +132,7 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor() {}
 
   ngOnInit() {
-    this.signalRService.start();
-
+    // Subscriptions can be set up early
     this.subscriptions.push(
       this.signalRService.onCreateOrUpdateRelation$.subscribe((event) => {
         this.loadTablesAndViews(event);
@@ -148,33 +153,62 @@ export class AppComponent implements OnInit, OnDestroy {
       }),
     );
 
-    // NEW: non-cancelable reload dialog when SignalR connection is lost
+    // Show dialog fast if we lose the connection later
     this.subscriptions.push(
-      this.signalRService.onConnectionLost$.subscribe(() => this.showReloadConfirm()),
+      this.signalRService.onReconnecting$.subscribe(() => {
+        if (this.reconnectTimer || this.connectionDialogShown) return;
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          this.showReloadConfirm(); // will not re-show if already shown
+        }, 1500);
+      }),
+      this.signalRService.onReconnected$.subscribe(() => {
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
+      }),
+      this.signalRService.onConnectionLost$.subscribe(() => {
+        // Hide full-screen loader (if any) and show the reload dialog
+        this.hubStatus.set('failed');
+        this.showReloadConfirm();
+      }),
     );
 
-    // Load persisted engine
+    // ── Boot: connect hub first; only then load engine + lists ──
+    this.hubStatus.set('connecting');
     this.listsLoading.set(true);
-    this.apiService.getEngine().subscribe({
-      next: (dto) => {
-        this.engineControl.setValue(dto.engine, { emitEvent: false });
-        this.loadedTablesAndViews.set(false);
-        this.clearSelectedListItem();
-        this.loadTablesAndViews();
-      },
-      error: () => {
-        this.notificationService.error('Datenquelle laden fehlgeschlagen.');
-        this.loadedTablesAndViews.set(false);
-      },
-    });
 
-    // Persist engine changes + refresh lists
+    this.signalRService
+      .startAndWait()
+      .then(() => {
+        this.hubStatus.set('connected');
+
+        // Now load persisted engine and, after that, the lists
+        this.apiService.getEngine().subscribe({
+          next: (dto) => {
+            this.engineControl.setValue(dto.engine, { emitEvent: false });
+            this.loadedTablesAndViews.set(false);
+            this.clearSelectedListItem();
+            this.loadTablesAndViews();
+          },
+          error: () => {
+            this.notificationService.error('Datenquelle laden fehlgeschlagen.');
+            this.loadedTablesAndViews.set(false);
+            // still allow UI to render; left side will be empty
+            this.listsLoading.set(false);
+          },
+        });
+      })
+      .catch(() => {
+        // start/negotiate failed → onConnectionLost$ handler above sets 'failed' & shows dialog
+      });
+
+    // Persist engine changes + refresh lists (only after connected)
     this.engineControl.valueChanges.subscribe((engine) => {
       if (engine == null) return;
 
-      // Save current widths before switching away
       this.saveCurrentTableWidths();
-
       this.loadRowsSubscription?.unsubscribe();
       this.clearSelectedListItem();
       this.listControl.setValue(null, { emitEvent: false });
@@ -183,7 +217,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.listsLoading.set(true);
       this.loadedTablesAndViews.set(false);
       this.resetTableState();
-      this.remountTable(); // ensure next table is fresh
+      this.remountTable();
 
       this.apiService.setEngine(engine).subscribe({
         next: () => this.loadTablesAndViews(),
@@ -196,12 +230,11 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // React to list selection changes
     this.listControl.valueChanges.subscribe((val) => {
-      // Save widths of previously selected relation before switching
       this.saveCurrentTableWidths();
 
       if (!val) {
         this.selectedListItem.set(null);
-        this.remountTable(); // unmount any previous table
+        this.remountTable();
         return;
       }
       const sel = this.parseSelection(val);
@@ -242,7 +275,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Build options from API data and apply current filter ───────
+  // ── Build options & filter ─────────────────────────────────────
   private rebuildGroupsFromApi(): void {
     const tables: ItemOption[] = this.tableItems().map((it) => ({
       label: it.label,
@@ -261,35 +294,24 @@ export class AppComponent implements OnInit, OnDestroy {
     this.applyFilter(this.listFilter);
   }
 
-  // Keep single grouped listbox; use a non-null sentinel for placeholders
   applyFilter(query: string) {
     const q = this.normalize(query);
     const isExcel = this.isExcel();
-
-    // Hide "Sichten" group for Excel as before
     const sourceGroups = this.allGroups.filter((g) => !(isExcel && g.label === 'Sichten'));
 
     this.groupedOptions = sourceGroups.map((g) => {
       const hadAnyItems = g.items.length > 0;
       const matched = q ? g.items.filter((it) => this.normalize(it.label).includes(q)) : g.items;
 
-      // Different placeholder depending on why it's empty
       const emptyLabel = hadAnyItems
         ? 'Keine Ergebnisse gefunden.'
         : g.label === 'Tabellen'
           ? 'Keine Tabellen vorhanden.'
-          : 'Keine Sichten vorhanden.'; // only shown on SQLite
+          : 'Keine Sichten vorhanden.';
 
       const items = matched.length
         ? matched
-        : [
-          {
-            label: emptyLabel,
-            value: `__placeholder__:${g.label}`,
-            disabled: true,
-            __placeholder: true,
-          },
-        ];
+        : [{ label: emptyLabel, value: `__placeholder__:${g.label}`, disabled: true, __placeholder: true }];
 
       return { label: g.label, items };
     });
@@ -301,7 +323,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return (s || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  // Make sure the table is recreated on selection changes to reset column sizes.
   private remountTable() {
     this.renderTable.set(false);
     this.cdr.detectChanges();
@@ -363,7 +384,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.selectedListItem.set(item);
     this.updateColumnNames();
 
-    // Reset paging/sort, then remount and load
     this.resetTableState();
     this.remountTable();
     this.loadTableData();
@@ -374,7 +394,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private clearSelectedListItem(): void {
-    // Save widths before clearing
     this.saveCurrentTableWidths();
 
     this.selectedListItem.set(null);
@@ -386,7 +405,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.remountTable();
   }
 
-  /** Reset paging & sort state and keep paginator UI in sync */
   private resetTableState(): void {
     this.pageIndex.set(DEFAULT_PAGE_INDEX);
     this.pageSize.set(DEFAULT_PAGE_SIZE);
@@ -438,7 +456,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadTableData();
   }
 
-  // Server-side sorting
   onSort(event: any) {
     this.sortBy.set(event?.field ?? null);
     this.sortDir.set(event?.order === 1 ? 'asc' : 'desc');
@@ -450,8 +467,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadTableData();
   }
 
-  // ── Column width state (session only) ──────────────────────────
-  /** Build a unique key for current relation (e.g. 'Table|Albums') */
+  // ── Column width state ─────────────────────────────────────────
   private currentRelationKey(): string | null {
     const sel = this.selectedListItem();
     if (!sel) return null;
@@ -459,18 +475,15 @@ export class AppComponent implements OnInit, OnDestroy {
     return `${typeKey}|${sel.id}`;
   }
 
-  /** Called by table after a drag; defer so DOM widths are final */
   onColResize(): void {
     setTimeout(() => this.saveCurrentTableWidths(), 0);
   }
 
-  /** Read saved width for a given column (used by <colgroup>) */
   getColWidth(col: string): string | undefined {
     const key = this.currentRelationKey();
     return key ? this.tableState.getWidth(key, col) : undefined;
   }
 
-  /** Snapshot current header widths (px) into the TableStateService */
   private saveCurrentTableWidths(): void {
     const key = this.currentRelationKey();
     if (!key || !this.dataTable) return;
@@ -478,7 +491,6 @@ export class AppComponent implements OnInit, OnDestroy {
     const host: HTMLElement | undefined = (this.dataTable as any).el?.nativeElement;
     if (!host) return;
 
-    // If scrollable, header has its own table element
     const tableEl =
       host.querySelector<HTMLElement>('.p-table-scrollable-header-table') ??
       host.querySelector<HTMLElement>('table');
