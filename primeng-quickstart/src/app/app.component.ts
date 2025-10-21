@@ -1,5 +1,5 @@
 // file: src/app/app.component.ts
-import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 import { Table, TableModule } from 'primeng/table';
@@ -63,6 +63,7 @@ interface Group {
 })
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
+  @ViewChild('filterInput') private filterInput?: ElementRef<HTMLInputElement>;
 
   protected readonly EngineType = EngineType;
   readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
@@ -479,6 +480,14 @@ export class AppComponent implements OnInit, OnDestroy {
     });
 
     this.tableState.setWidths(key, widths);
+  }
+
+  // ── Search clear button ────────────────────────────────────────
+  clearSearch(): void {
+    this.listFilter = '';
+    this.applyFilter('');
+    // re-focus the input for quick new search
+    setTimeout(() => this.filterInput?.nativeElement?.focus(), 0);
   }
 
   // ── Helpers ────────────────────────────────────────────────────

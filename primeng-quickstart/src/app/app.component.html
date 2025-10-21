@@ -49,19 +49,43 @@
         <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
           <!-- External filter -->
           <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
-            <p-iconfield iconPosition="left">
-              <p-inputicon styleClass="pi pi-search"></p-inputicon>
+            <!-- Clearable search -->
+            <div class="search-clearable" style="position: relative; width: 100%">
+              <p-iconfield iconPosition="left" class="w-full">
+                <p-inputicon styleClass="pi pi-search"></p-inputicon>
 
-              <input
-                #filterInput
-                pInputText
-                [(ngModel)]="listFilter"
-                (ngModelChange)="applyFilter($event)"
-                type="text"
-                placeholder="Suchen…"
-                class="w-full"
-              />
-            </p-iconfield>
+                <input
+                  #filterInput
+                  id="list-filter-input"
+                  pInputText
+                  [(ngModel)]="listFilter"
+                  (ngModelChange)="applyFilter($event)"
+                  type="text"
+                  placeholder="Suchen…"
+                  class="w-full"
+                  style="padding-right: 2.25rem"
+                />
+              </p-iconfield>
+
+              @if (listFilter?.length) {
+                <button
+                  type="button"
+                  pButton
+                  class="p-button-text p-button-plain p-button-rounded p-button-icon-only"
+                  (click)="clearSearch()"
+                  aria-label="Suche löschen"
+                  style="
+                    position: absolute;
+                    right: .35rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 1.75rem;
+                    height: 1.75rem;"
+                >
+                  <span class="p-button-icon pi pi-times"></span>
+                </button>
+              }
+            </div>
           </div>
 
           <!-- Grouped Listbox -->
