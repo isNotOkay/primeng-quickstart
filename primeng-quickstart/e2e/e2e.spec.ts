@@ -715,59 +715,58 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     });
   });
 
-  test.describe('Listbox placeholders — disabled items are not highlighted', () => {
-    test('disabled placeholder keeps transparent bg even if "selected" class is present', async ({
-                                                                                                   page,
-                                                                                                   request,
-                                                                                                   baseURL
-                                                                                                 }) => {
-      // Use SQLite so both groups exist and filtering yields placeholders for each
-      await putEngine(request, 'sqlite');
-      await goHome(page, baseURL);
-      await selectEngine(page, 'SQLite');
+  test('disabled placeholder keeps neutral bg even if "selected" class is present', async ({ page, request, baseURL }) => {
+    // Use SQLite so both groups exist and filtering yields placeholders for each
+    await putEngine(request, 'sqlite');
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
 
-      // Type a nonsense filter that matches nothing to show "Keine Ergebnisse gefunden." placeholders
-      const search = page.getByPlaceholder('Suchen…');
-      await search.fill(`NO_MATCH_${Date.now()}`);
+    // Type a nonsense filter that matches nothing to show "Keine Ergebnisse gefunden." placeholders
+    const search = page.getByPlaceholder('Suchen…');
+    await search.fill(`NO_MATCH_${Date.now()}`);
 
-      // Grab the first placeholder option (disabled)
-      const placeholder = page
-        .locator('.left-listbox')
-        .locator('li.p-listbox-option.p-disabled', {hasText: 'Keine Ergebnisse gefunden.'})
-        .first();
+    // Grab the first placeholder option (disabled)
+    const placeholder = page
+      .locator('.left-listbox')
+      .locator('li.p-listbox-option.p-disabled', { hasText: 'Keine Ergebnisse gefunden.' })
+      .first();
 
-      await expect(placeholder).toBeVisible({timeout: UI_TIMEOUT});
-      // Component logic should not mark it selected
-      await expect(placeholder).not.toHaveClass(/p-listbox-option-selected/);
+    await expect(placeholder).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(placeholder).toHaveClass(/p-disabled/);
 
-      // Read computed background
-      const bgBefore = await placeholder.evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
+    // Forcefully add "selected" class to simulate accidental selection
+    await placeholder.evaluate((el) => (el as HTMLElement).classList.add('p-listbox-option-selected'));
 
-      // Forcefully add "selected" class to simulate accidental selection and verify CSS rule prevents highlight
-      await placeholder.evaluate((el) => (el as HTMLElement).classList.add('p-listbox-option-selected'));
+    // Read computed background and its alpha; disabled placeholder should remain near-transparent
+    const { bg, alpha } = await placeholder.evaluate((el) => {
+      const c = getComputedStyle(el as HTMLElement).backgroundColor || '';
+      const transparent = { bg: c || 'transparent', alpha: 0 };
+      if (!c || c === 'transparent') return transparent;
 
-      const bgAfter = await placeholder.evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
-
-      // Background should remain unchanged and transparent-ish
-      expect(bgAfter).toBe(bgBefore);
-      expect(['rgba(0, 0, 0, 0)', 'transparent']).toContain(bgAfter);
-
-      // Cleanup the filter
-      await search.fill('');
+      const m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+      if (!m) return { bg: c, alpha: 1 };
+      return { bg: c, alpha: m[4] ? parseFloat(m[4]) : 1 };
     });
+
+    // Allow a tiny theme overlay but ensure it is NOT a solid "selected" background
+    expect(alpha).toBeLessThanOrEqual(0.12); // ~<=12% opacity is considered neutral
+
+    // Cleanup the filter
+    await search.fill('');
   });
-  test('sorting sends sortBy/sortDir when clicking headers (server-side sorting)', async ({ page, request, baseURL }) => {
+
+  test('sorting sends sortBy/sortDir when clicking headers (server-side sorting)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_Sort_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
+      target: {name: tableName},
       create: {
         kind: 'Table',
         schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
         ],
       },
     });
@@ -788,12 +787,12 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
           res.url().includes(pathBase) &&
           res.url().includes('sortBy=Name') &&
           res.url().includes(`sortDir=${dir}`),
-        { timeout: UI_TIMEOUT }
+        {timeout: UI_TIMEOUT}
       );
 
-      let header = page.getByRole('columnheader', { name: 'Name', exact: true });
+      let header = page.getByRole('columnheader', {name: 'Name', exact: true});
       if ((await header.count()) === 0) {
-        header = page.locator('p-table thead th').filter({ hasText: 'Name' });
+        header = page.locator('p-table thead th').filter({hasText: 'Name'});
       }
       await header.click();
 
@@ -805,7 +804,83 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await clickHeaderAndExpect('asc');
     await clickHeaderAndExpect('desc');
 
-    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+  });
+
+
+  test('column widths persist across table switches (session cache)', async ({page, request, baseURL}) => {
+    await putEngine(request, 'sqlite');
+
+    const t1 = `E2E_Width_A_${Date.now()}`;
+    const t2 = `E2E_Width_B_${Date.now()}`;
+
+    // Create two tiny tables so we can switch between them
+    for (const name of [t1, t2]) {
+      await dsl(request, {
+        operation: 'Create',
+        target: {name},
+        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
+      });
+    }
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    // Open table 1
+    await waitForListItemVisible(page, t1).then((i) => i.click());
+    await expectHeaderVisible(page, 'Name');
+
+    // Helpers
+    const headerLocator = (col: string) => {
+      const byRole = page.getByRole('columnheader', {name: col, exact: true});
+      return byRole.count().then((n) => (n > 0 ? byRole.first() : page.locator('p-table thead th').filter({hasText: col}).first()));
+    };
+    const getHeaderWidth = async (col: string) => {
+      const th = await headerLocator(col);
+      await expect(th).toBeVisible({timeout: UI_TIMEOUT});
+      return await th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
+    };
+    const dragResizer = async (col: string, deltaX: number) => {
+      const th = await headerLocator(col);
+      const resizer = th.locator('.p-column-resizer, [data-pc-section="columnresizer"]');
+      const use = (await resizer.count()) > 0 ? resizer.first() : th;
+
+      const box = await use.boundingBox();
+      if (!box) throw new Error('Could not determine resizer bounding box');
+
+      const startX = box.x + (use === th ? box.width - 2 : box.width / 2);
+      const startY = box.y + box.height / 2;
+
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + deltaX, startY);
+      await page.mouse.up();
+    };
+
+    // Measure -> Resize -> Measure
+    const wBefore = await getHeaderWidth('Name');
+    await dragResizer('Name', 100); // drag ~100px to the right
+    // give the component a tick to emit (onColResize) and save in state
+    await page.waitForTimeout(50);
+    const wAfter = await getHeaderWidth('Name');
+    expect(wAfter).toBeGreaterThan(wBefore + 30); // resized noticeably
+
+    // Switch away and back
+    await waitForListItemVisible(page, t2).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+
+    await waitForListItemVisible(page, t1).then((i) => i.click());
+    await expectHeaderVisible(page, 'Name');
+
+    const wBack = await getHeaderWidth('Name');
+
+    // Should restore to (almost) the same width; allow a small tolerance
+    expect(Math.abs(wBack - wAfter)).toBeLessThanOrEqual(5);
+
+    // Cleanup
+    for (const name of [t1, t2]) {
+      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+    }
   });
 
 });

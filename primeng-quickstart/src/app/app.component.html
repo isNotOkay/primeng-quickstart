@@ -113,31 +113,48 @@
               [value]="rows()"
               size="small"
               dataKey="id"
-              showGridlines
-              columnResizeMode="expand"
-              paginatorPosition="bottom"
-              currentPageReportTemplate="{first} bis {last} von {totalRecords}"
-              scrollHeight="flex"
-              sortMode="single"
               [rowTrackBy]="rowTrackBy"
+              showGridlines
               [resizableColumns]="true"
+              columnResizeMode="expand"
+              (onColResize)="onColResize()"
+
               [paginator]="true"
+              paginatorPosition="bottom"
               [rows]="pageSize()"
               [totalRecords]="totalCount()"
               [first]="pageIndex() * pageSize()"
               [showCurrentPageReport]="true"
+              currentPageReportTemplate="{first} bis {last} von {totalRecords}"
+
               [scrollable]="true"
+              scrollHeight="flex"
               [style]="{ flex: '1 1 0' }"
               [tableStyle]="{ width: 'max-content' }"
-              (onPage)="onPage($event)"
+
+              sortMode="single"
+              [sortField]="sortBy() ?? ''"
+              [sortOrder]="sortDir() === 'asc' ? 1 : -1"
               (onSort)="onSort($event)"
+
+              (onPage)="onPage($event)"
+
               [lazy]="true"
               [lazyLoadOnInit]="false"
             >
+              <!-- Apply cached widths to both header & body via <colgroup> -->
+              <ng-template pTemplate="colgroup">
+                <colgroup>
+                  @for (col of columnNames(); track col) {
+                    <col [style.width]="getColWidth(col) || null" />
+                  }
+                </colgroup>
+              </ng-template>
+
               <ng-template pTemplate="header">
                 <tr>
                   @for (col of columnNames(); track col) {
-                    <th pResizableColumn [pSortableColumn]="col" style="width: 20%">
+                    <th pResizableColumn [pSortableColumn]="col">
                       <div style="display: flex; align-items: center; gap: 0.5rem">
                         {{ col }}
                         <p-sortIcon [field]="col"></p-sortIcon>

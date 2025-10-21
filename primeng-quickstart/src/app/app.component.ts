@@ -9,9 +9,9 @@ import { ListboxModule } from 'primeng/listbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { Toolbar } from 'primeng/toolbar';
 import { ButtonDirective } from 'primeng/button';
-
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
+
 import { EngineType } from './enums/engine-type.enum';
 import { ListItemModel } from './models/list-item.model';
 import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
@@ -25,6 +25,7 @@ import { PagedResultApiModel } from './models/api/paged-result.api-model';
 import { RowModel } from './models/row.model';
 import { Toast } from 'primeng/toast';
 import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
+import { TableStateService } from './services/table-state.service';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -85,22 +86,23 @@ export class AppComponent implements OnInit, OnDestroy {
   protected readonly sortBy = signal<string | null>(null);
   protected readonly sortDir = signal<'asc' | 'desc'>('asc');
   protected readonly renderTable = signal(true);
+
   private readonly cdr = inject(ChangeDetectorRef);
-
   private readonly apiService = inject(ApiService);
-
   private readonly signalRService = inject(SignalRService);
   private readonly notificationService = inject(NotificationService);
+  private readonly tableState = inject(TableStateService);
+
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
-  // ── Datenquelle select ─────────────────────────────────────────
 
+  // ── Datenquelle select ─────────────────────────────────────────
   dataSources: { label: string; value: EngineType }[] = [
     { label: 'SQLite', value: EngineType.Sqlite },
     { label: 'Excel', value: EngineType.Excel },
   ];
-  // ── Listbox (reactive) ─────────────────────────────────────────
 
+  // ── Listbox (reactive) ─────────────────────────────────────────
   readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
   private allGroups: Group[] = [];
   groupedOptions: Group[] = [];
@@ -150,6 +152,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.engineControl.valueChanges.subscribe((engine) => {
       if (engine == null) return;
 
+      // Save current widths before tearing down
+      this.saveCurrentTableWidths();
+
       this.loadRowsSubscription?.unsubscribe();
       this.clearSelectedListItem();
       this.listControl.setValue(null, { emitEvent: false });
@@ -171,6 +176,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // React to list selection changes
     this.listControl.valueChanges.subscribe((val) => {
+      // Save widths of previously selected relation before switching
+      this.saveCurrentTableWidths();
+
       if (!val) {
         this.selectedListItem.set(null);
         this.remountTable(); // unmount any previous table
@@ -215,7 +223,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ── Build options from API data and apply current filter ───────
-
   private rebuildGroupsFromApi(): void {
     const tables: ItemOption[] = this.tableItems().map((it) => ({
       label: it.label,
@@ -234,7 +241,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.applyFilter(this.listFilter);
   }
 
-  // ✅ First option: keep single grouped listbox; use a non-null sentinel value for placeholders
+  // Keep single grouped listbox; use a non-null sentinel value for placeholders
   applyFilter(query: string) {
     const q = this.normalize(query);
     const isExcel = this.isExcel();
@@ -248,7 +255,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       // Different placeholder depending on why it's empty
       const emptyLabel = hadAnyItems
-        ? 'Keine Ergebnisse gefunden.' // user filtered, but nothing matched
+        ? 'Keine Ergebnisse gefunden.'
         : g.label === 'Tabellen'
           ? 'Keine Tabellen vorhanden.'
           : 'Keine Sichten vorhanden.'; // only shown on SQLite
@@ -258,8 +265,7 @@ export class AppComponent implements OnInit, OnDestroy {
         : [
           {
             label: emptyLabel,
-            // IMPORTANT: non-null sentinel that will never equal the control value
-            value: `__placeholder__:${g.label}`,
+            value: `__placeholder__:${g.label}`, // non-null sentinel
             disabled: true,
             __placeholder: true,
           },
@@ -351,6 +357,9 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private clearSelectedListItem(): void {
+    // Save widths of the current table before clearing
+    this.saveCurrentTableWidths();
+
     this.selectedListItem.set(null);
     this.columnNames.set([]);
     this.rows.set([]);
@@ -412,6 +421,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadTableData();
   }
 
+  // Use server-side sorting via (onSort)
   onSort(event: any) {
     this.sortBy.set(event?.field ?? null);
     this.sortDir.set(event?.order === 1 ? 'asc' : 'desc');
@@ -423,6 +433,55 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadTableData();
   }
 
+  // ── Column width state (session only) ──────────────────────────
+  /** Build a unique key for current relation (e.g. 'Table|Albums') */
+  private currentRelationKey(): string | null {
+    const sel = this.selectedListItem();
+    if (!sel) return null;
+    const typeKey = sel.relationType === RelationType.View ? 'View' : 'Table';
+    return `${typeKey}|${sel.id}`;
+  }
+
+  /** Called by table after a drag; defer so DOM widths are final */
+  onColResize(): void {
+    setTimeout(() => this.saveCurrentTableWidths(), 0);
+  }
+
+  /** Read saved width for a given column (used by <colgroup>) */
+  getColWidth(col: string): string | undefined {
+    const key = this.currentRelationKey();
+    return key ? this.tableState.getWidth(key, col) : undefined;
+  }
+
+  /** Snapshot current header widths (px) into the TableStateService */
+  private saveCurrentTableWidths(): void {
+    const key = this.currentRelationKey();
+    if (!key || !this.dataTable) return;
+
+    const host: HTMLElement | undefined = (this.dataTable as any).el?.nativeElement;
+    if (!host) return;
+
+    // If scrollable, header has its own table element
+    const tableEl =
+      host.querySelector<HTMLElement>('.p-table-scrollable-header-table') ??
+      host.querySelector<HTMLElement>('table');
+    if (!tableEl) return;
+
+    const ths = tableEl.querySelectorAll<HTMLElement>('thead th');
+    const cols = this.columnNames();
+    const widths: Record<string, string> = {};
+
+    ths.forEach((th, i) => {
+      const name = cols[i];
+      if (!name) return;
+      const px = Math.round(th.getBoundingClientRect().width); // rendered width in px
+      if (px > 0) widths[name] = `${px}px`;
+    });
+
+    this.tableState.setWidths(key, widths);
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
   private makeValue(type: RelationType, id: string) {
     return `${type}|${id}`;
   }
