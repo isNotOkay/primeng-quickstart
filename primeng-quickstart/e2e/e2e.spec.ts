@@ -67,11 +67,13 @@ async function openSelectOverlay(selectRoot: Locator) {
     try {
       await combo.press('Enter', {timeout: 1000});
       return;
-    } catch {}
+    } catch {
+    }
     try {
       await combo.press('Space', {timeout: 1000});
       return;
-    } catch {}
+    } catch {
+    }
   }
 
   // Last resort: click near the top-left of the component
@@ -147,16 +149,18 @@ async function waitForListItemHidden(page: Page, text: string): Promise<void> {
 
 /** Helpers for group headers in the left listbox */
 function groupHeader(page: Page, name: string) {
-  return page.locator('.left-listbox li.p-listbox-option-group').filter({ hasText: name });
+  return page.locator('.left-listbox li.p-listbox-option-group').filter({hasText: name});
 }
+
 async function expectGroupHeaderVisible(page: Page, name: string) {
   const g = groupHeader(page, name);
-  await expect(g).toHaveCount(1, { timeout: UI_TIMEOUT });
-  await expect(g.first()).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(g).toHaveCount(1, {timeout: UI_TIMEOUT});
+  await expect(g.first()).toBeVisible({timeout: UI_TIMEOUT});
 }
+
 async function expectGroupHeaderHidden(page: Page, name: string) {
   const g = groupHeader(page, name);
-  await expect(g).toHaveCount(0, { timeout: UI_TIMEOUT });
+  await expect(g).toHaveCount(0, {timeout: UI_TIMEOUT});
 }
 
 test.describe.configure({mode: 'serial'});
@@ -427,19 +431,19 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   // ───────────────────────────────────────────────────────────────
   // NEW: Selecting a table triggers exactly one data request
   // ───────────────────────────────────────────────────────────────
-  test('selecting a table issues a single /tables/<name> request (no duplicates)', async ({ page, request, baseURL }) => {
+  test('selecting a table issues a single /tables/<name> request (no duplicates)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_NoDupReq_${Date.now()}`;
     // Create a tiny table so there is something to select (no rows needed)
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
+      target: {name: tableName},
       create: {
         kind: 'Table',
         schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
         ],
       },
     });
@@ -453,9 +457,15 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     let finished = 0;
     let failed = 0;
 
-    const onReq = (req: any) => { if (req.url().includes(pathPrefix)) started++; };
-    const onFinished = (req: any) => { if (req.url().includes(pathPrefix)) finished++; };
-    const onFailed = (req: any) => { if (req.url().includes(pathPrefix)) failed++; };
+    const onReq = (req: any) => {
+      if (req.url().includes(pathPrefix)) started++;
+    };
+    const onFinished = (req: any) => {
+      if (req.url().includes(pathPrefix)) finished++;
+    };
+    const onFailed = (req: any) => {
+      if (req.url().includes(pathPrefix)) failed++;
+    };
 
     page.on('request', onReq);
     page.on('requestfinished', onFinished);
@@ -481,7 +491,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     page.off('requestfinished', onFinished);
     page.off('requestfailed', onFailed);
 
-    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 });
 
@@ -566,9 +576,10 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await selectEngine(page, 'Excel');
 
     await dsl(request, {
-      operation: 'Alter',
-      target: {name: sheetName},
-      alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]}},
+        operation: 'Alter',
+        target: {name: sheetName},
+        alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]}
+      },
     );
 
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
@@ -635,9 +646,9 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
 // Visibility of "Sichten" group (regression tests)
 // ───────────────────────────────────────────────────────────────
 test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
-  test.describe.configure({ mode: 'serial' });
+  test.describe.configure({mode: 'serial'});
 
-  test('initial load with persisted Excel hides "Sichten"', async ({ page, request, baseURL }) => {
+  test('initial load with persisted Excel hides "Sichten"', async ({page, request, baseURL}) => {
     await putEngine(request, 'excel');       // Persist Excel BEFORE visiting the app
     await goHome(page, baseURL);             // Initial load
 
@@ -647,7 +658,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectGroupHeaderVisible(page, 'TABELLEN');
   });
 
-  test('switching engines toggles "Sichten" visibility', async ({ page, request, baseURL }) => {
+  test('switching engines toggles "Sichten" visibility', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');      // Start from SQLite
     await goHome(page, baseURL);
 
@@ -665,14 +676,14 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   });
 
   test.describe('Engine switch clears selection and prevents stale table requests', () => {
-    test('no request for previously selected table after switching engine', async ({ page, request, baseURL }) => {
+    test('no request for previously selected table after switching engine', async ({page, request, baseURL}) => {
       // Ensure Excel is the current engine and create a sheet
       await putEngine(request, 'excel');
       const sheetName = `E2E_XL_Stale_${Date.now()}`;
       await dsl(request, {
         operation: 'Create',
-        target: { name: sheetName },
-        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+        target: {name: sheetName},
+        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
       });
 
       await goHome(page, baseURL);
@@ -700,7 +711,49 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
       // Cleanup the created sheet
       await putEngine(request, 'excel');
-      await dsl(request, { operation: 'Drop', target: { name: sheetName }, drop: {} });
+      await dsl(request, {operation: 'Drop', target: {name: sheetName}, drop: {}});
+    });
+  });
+
+  test.describe('Listbox placeholders — disabled items are not highlighted', () => {
+    test('disabled placeholder keeps transparent bg even if "selected" class is present', async ({
+                                                                                                   page,
+                                                                                                   request,
+                                                                                                   baseURL
+                                                                                                 }) => {
+      // Use SQLite so both groups exist and filtering yields placeholders for each
+      await putEngine(request, 'sqlite');
+      await goHome(page, baseURL);
+      await selectEngine(page, 'SQLite');
+
+      // Type a nonsense filter that matches nothing to show "Keine Ergebnisse gefunden." placeholders
+      const search = page.getByPlaceholder('Suchen…');
+      await search.fill(`NO_MATCH_${Date.now()}`);
+
+      // Grab the first placeholder option (disabled)
+      const placeholder = page
+        .locator('.left-listbox')
+        .locator('li.p-listbox-option.p-disabled', {hasText: 'Keine Ergebnisse gefunden.'})
+        .first();
+
+      await expect(placeholder).toBeVisible({timeout: UI_TIMEOUT});
+      // Component logic should not mark it selected
+      await expect(placeholder).not.toHaveClass(/p-listbox-option-selected/);
+
+      // Read computed background
+      const bgBefore = await placeholder.evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
+
+      // Forcefully add "selected" class to simulate accidental selection and verify CSS rule prevents highlight
+      await placeholder.evaluate((el) => (el as HTMLElement).classList.add('p-listbox-option-selected'));
+
+      const bgAfter = await placeholder.evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
+
+      // Background should remain unchanged and transparent-ish
+      expect(bgAfter).toBe(bgBefore);
+      expect(['rgba(0, 0, 0, 0)', 'transparent']).toContain(bgAfter);
+
+      // Cleanup the filter
+      await search.fill('');
     });
   });
 });
