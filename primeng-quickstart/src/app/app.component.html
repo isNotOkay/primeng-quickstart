@@ -32,6 +32,7 @@
       <ng-template pTemplate="start">
         <div style="display: flex; align-items: center; gap: 0.5rem">
           <p-select
+            size="small"
             inputId="dataSource"
             [options]="dataSources"
             [formControl]="engineControl"
@@ -45,7 +46,7 @@
       </ng-template>
 
       <ng-template pTemplate="end">
-        <p-button label="Download" icon="pi pi-download" severity="secondary" variant="outlined"
+        <p-button label="Download" icon="pi pi-download" severity="secondary" variant="outlined" size="small"
                   (click)="onDownload()"/>
       </ng-template>
     </p-toolbar>
@@ -63,11 +64,12 @@
             <!-- Clearable search -->
             <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
               <div class="search-clearable" style="position: relative; width: 100%">
-                <p-iconfield iconPosition="left" class="w-full">
-                  <p-inputicon styleClass="pi pi-search"></p-inputicon>
+                <p-iconfield iconPosition="left" class="w-full" >
+                  <p-inputicon styleClass="pi pi-search" ></p-inputicon>
 
                   <input
                     #filterInput
+                    pSize="small"
                     id="list-filter-input"
                     pInputText
                     [(ngModel)]="listFilter"
@@ -171,7 +173,7 @@
                     </div>
                   </ng-template>
                   <ng-template pTemplate="end">
-                    <p-button label="Löschen" icon="pi pi-trash" severity="danger" variant="outlined"
+                    <p-button label="Löschen" icon="pi pi-trash" severity="danger" variant="outlined" size="small"
                               [disabled]="!selectedListItem()"
                               (click)="onDeleteSelected()"/>
                   </ng-template>
