@@ -25,11 +25,25 @@ async function putEngine(request: APIRequestContext, engine: 'sqlite' | 'excel')
 async function confirmPrimeDelete(page: Page) {
   // Find the visible PrimeNG dialog by its container rather than ARIA name
   const dlg = page.locator('.p-dialog:visible').filter({
-    has: page.getByRole('button', { name: 'Abbrechen' }),
+    has: page.getByRole('button', {name: 'Abbrechen'}),
   }).last();
 
-  await expect(dlg).toBeVisible({ timeout: UI_TIMEOUT });
-  await dlg.getByRole('button', { name: 'Löschen', exact: true }).click();
+  await expect(dlg).toBeVisible({timeout: UI_TIMEOUT});
+  await dlg.getByRole('button', {name: 'Löschen', exact: true}).click();
+}
+
+export async function clickToolbarDelete(page: Page) {
+  await page
+    .locator('.right-panel app-loading-indicator')
+    .waitFor({ state: 'detached', timeout: UI_TIMEOUT })
+    .catch(() => {});
+
+  // Wait until the button exists and is clickable
+  const deleteBtn = page.locator('#toolbar-delete');
+  await deleteBtn.waitFor({ state: 'visible', timeout: UI_TIMEOUT });
+  await expect(deleteBtn).toBeEnabled({ timeout: UI_TIMEOUT });
+
+  await deleteBtn.click();
 }
 
 
@@ -825,18 +839,18 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
   // Add this test near your other sorting tests (e.g., in the "Left listbox groups — ..." describe)
 
-  test('sorting issues a single request per click (no duplicates)', async ({ page, request, baseURL }) => {
+  test('sorting issues a single request per click (no duplicates)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_SortSingle_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
+      target: {name: tableName},
       create: {
         kind: 'Table',
         schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
         ],
       },
     });
@@ -873,12 +887,12 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       page.on('requestfailed', onFailed);
 
       // Click "Name" header and wait for the matching response
-      let header = page.getByRole('columnheader', { name: 'Name', exact: true });
+      let header = page.getByRole('columnheader', {name: 'Name', exact: true});
       if ((await header.count()) === 0) {
-        header = page.locator('p-table thead th').filter({ hasText: 'Name' });
+        header = page.locator('p-table thead th').filter({hasText: 'Name'});
       }
 
-      const wait = page.waitForResponse((res) => match(res.url()), { timeout: UI_TIMEOUT });
+      const wait = page.waitForResponse((res) => match(res.url()), {timeout: UI_TIMEOUT});
       await header.click();
       const resp = await wait;
       expect(resp.ok()).toBeTruthy();
@@ -900,11 +914,11 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectSingleSortRequest('asc');
     await expectSingleSortRequest('desc');
 
-    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
 
-  test('column widths persist; new column gets cached after first resize', async ({ page, request, baseURL }) => {
+  test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
     const t1 = `E2E_Width_NewCol_A_${Date.now()}`;
@@ -914,8 +928,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     for (const name of [t1, t2]) {
       await dsl(request, {
         operation: 'Create',
-        target: { name },
-        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }, { name: 'Name', type: 'TEXT' }] },
+        target: {name},
+        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
       });
     }
 
@@ -930,19 +944,19 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     const headerLocator = async (col: string) => {
       let th = page
         .locator('.p-table-scrollable-header .p-table-scrollable-header-table thead th')
-        .filter({ hasText: col })
+        .filter({hasText: col})
         .first();
       if ((await th.count()) > 0) return th;
 
-      const byRole = page.getByRole('columnheader', { name: col, exact: true });
+      const byRole = page.getByRole('columnheader', {name: col, exact: true});
       if ((await byRole.count()) > 0) return byRole.first();
 
-      return page.locator('p-table thead th').filter({ hasText: col }).first();
+      return page.locator('p-table thead th').filter({hasText: col}).first();
     };
 
     const getHeaderWidth = async (col: string) => {
       const th = await headerLocator(col);
-      await expect(th).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(th).toBeVisible({timeout: UI_TIMEOUT});
       return th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
     };
 
@@ -965,7 +979,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await dragResizer('Name', 100);
 
     await expect
-      .poll(async () => await getHeaderWidth('Name'), { timeout: UI_TIMEOUT })
+      .poll(async () => await getHeaderWidth('Name'), {timeout: UI_TIMEOUT})
       .toBeGreaterThan(wNameBefore + 30);
 
     const wNameAfter = await getHeaderWidth('Name');
@@ -979,22 +993,22 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Allow cloned header to settle; poll until near the cached width
     await expect
-      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), {timeout: UI_TIMEOUT})
       .toBeLessThanOrEqual(6);
 
     // ── Extra step: add a new column, ensure old widths stay, then cache new column after first resize ──
     const newCol = 'AddedCol';
     await dsl(request, {
       operation: 'Alter',
-      target: { name: t1 },
-      alter: { actions: [{ addColumn: { name: newCol, type: 'TEXT' } }] },
+      target: {name: t1},
+      alter: {actions: [{addColumn: {name: newCol, type: 'TEXT'}}]},
     });
 
     await expectHeaderVisible(page, newCol);
 
     // Old column ("Name") should retain width (poll to avoid transient header clone reads)
     await expect
-      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), {timeout: UI_TIMEOUT})
       .toBeLessThanOrEqual(6);
 
     // New column starts with some auto width (>0)
@@ -1004,7 +1018,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Resize new column and ensure width increases and is cached
     await dragResizer(newCol, 120);
     await expect
-      .poll(async () => await getHeaderWidth(newCol), { timeout: UI_TIMEOUT })
+      .poll(async () => await getHeaderWidth(newCol), {timeout: UI_TIMEOUT})
       .toBeGreaterThan(wNewDefault + 40);
     const wNewAfter = await getHeaderWidth(newCol);
 
@@ -1016,16 +1030,16 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectHeaderVisible(page, newCol);
 
     await expect
-      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), {timeout: UI_TIMEOUT})
       .toBeLessThanOrEqual(6);
 
     await expect
-      .poll(async () => Math.abs((await getHeaderWidth(newCol)) - wNewAfter), { timeout: UI_TIMEOUT })
+      .poll(async () => Math.abs((await getHeaderWidth(newCol)) - wNewAfter), {timeout: UI_TIMEOUT})
       .toBeLessThanOrEqual(6);
 
     // Cleanup
     for (const name of [t1, t2]) {
-      await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
+      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
     }
   });
 
@@ -1244,7 +1258,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'Name');
 
-    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await clickToolbarDelete(page);
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, tableName);
@@ -1271,7 +1285,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await waitForListItemVisible(page, viewName).then((i) => i.click());
     await expectHeaderVisible(page, 'AlbumId');
 
-    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await clickToolbarDelete(page);
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, viewName);
@@ -1304,25 +1318,26 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectHeaderVisible(page, 'Id');
     await expectHeaderVisible(page, 'Name');
 
-    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await clickToolbarDelete(page);
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, sheetName);
     await expect(page.getByText('Keine Tabelle ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
   });
 
-  test('engine switch keeps UI visible and shows list overlay (not blank screen)', async ({ page, request, baseURL }) => {
+
+  test('engine switch keeps UI visible and shows list overlay (not blank screen)', async ({page, request, baseURL}) => {
     // Start on SQLite with at least one item present
     await putEngine(request, 'sqlite');
     const tableName = `E2E_EngineSwitch_UI_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
+      target: {name: tableName},
       create: {
         kind: 'Table',
         schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
         ],
       },
     });
@@ -1348,21 +1363,21 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await openSelectOverlay(selectRoot);
 
     const panel = page.locator('.p-select-panel, .p-dropdown-panel, .p-overlay, .p-select-items');
-    await expect(panel.first()).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(panel.first()).toBeVisible({timeout: UI_TIMEOUT});
 
-    const opt = page.getByRole('option', { name: 'Excel', exact: true });
+    const opt = page.getByRole('option', {name: 'Excel', exact: true});
     if ((await opt.count()) > 0) {
-      await opt.first().click({ timeout: UI_TIMEOUT });
+      await opt.first().click({timeout: UI_TIMEOUT});
     } else {
-      await panel.getByText('Excel', { exact: true }).first().click({ timeout: UI_TIMEOUT });
+      await panel.getByText('Excel', {exact: true}).first().click({timeout: UI_TIMEOUT});
     }
 
     // While lists are loading, the scaffold (toolbar + left list container) must still be visible
-    await expect(page.locator('p-toolbar').first()).toBeVisible({ timeout: UI_TIMEOUT });
-    await expect(page.locator('.left-listbox')).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.locator('p-toolbar').first()).toBeVisible({timeout: UI_TIMEOUT});
+    await expect(page.locator('.left-listbox')).toBeVisible({timeout: UI_TIMEOUT});
 
     // And an overlay spinner should be shown (not a full-page blank screen)
-    await expect(page.locator('app-loading-indicator').first()).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.locator('app-loading-indicator').first()).toBeVisible({timeout: UI_TIMEOUT});
 
     // Let the delayed requests finish and assert final state
     await waitForListsReady(page);
@@ -1374,7 +1389,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await page.unroute('**/api/web-viewer/views*');
 
     await putEngine(request, 'sqlite');
-    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
 });

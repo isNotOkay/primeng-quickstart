@@ -164,7 +164,7 @@
               } @else {
 
                 <!-- Context toolbar (only when a table/view is selected) -->
-                <p-toolbar styleClass="right-panel-toolbar">
+                <p-toolbar class="right-panel-toolbar">
                   <ng-template pTemplate="start">
                     <div style="display:flex; align-items:center; gap:.5rem">
                       <i class="pi pi-table" style="opacity:.7"></i>
@@ -173,9 +173,16 @@
                     </div>
                   </ng-template>
                   <ng-template pTemplate="end">
-                    <p-button label="Löschen" icon="pi pi-trash" severity="danger" variant="outlined" size="small"
-                              [disabled]="!selectedListItem()"
-                              (click)="onDeleteSelected()"/>
+                    <p-button
+                      id="toolbar-delete"
+                      label="Löschen"
+                      icon="pi pi-trash"
+                      severity="danger"
+                      variant="outlined"
+                      size="small"
+                      [disabled]="!selectedListItem()"
+                      (click)="onDeleteSelected()"
+                    />
                   </ng-template>
                 </p-toolbar>
 
