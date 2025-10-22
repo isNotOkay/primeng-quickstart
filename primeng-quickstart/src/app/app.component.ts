@@ -8,7 +8,7 @@ import {SelectModule} from 'primeng/select';
 import {ListboxModule} from 'primeng/listbox';
 import {InputTextModule} from 'primeng/inputtext';
 import {Toolbar} from 'primeng/toolbar';
-import {ButtonDirective} from 'primeng/button';
+import {Button, ButtonDirective} from 'primeng/button';
 import {IconField} from 'primeng/iconfield';
 import {InputIcon} from 'primeng/inputicon';
 import {Toast} from 'primeng/toast';
@@ -62,6 +62,7 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
     Toast,
     ConfirmDialog,
     LoadingIndicator,
+    Button,
 
   ],
   templateUrl: './app.component.html',

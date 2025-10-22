@@ -15,13 +15,11 @@
 <!-- Boot gating:
      - Full-page loader ONLY while the hub is connecting OR the very first lists load
      - After first load, keep the UI visible and overlay spinners locally while reloading -->
-@if (
-  hubStatus() === 'connecting' ||
-  (hubStatus() === 'connected' &&
-    !loadedTablesAndViews() &&
-    tableItems().length === 0 &&
-    viewItems().length === 0)
-  ) {
+@if (hubStatus() === 'connecting' ||
+(hubStatus() === 'connected' &&
+  !loadedTablesAndViews() &&
+  tableItems().length === 0 &&
+  viewItems().length === 0)) {
   <div style="height: 100vh; width: 100%; display: grid; place-items: center">
     <app-loading-indicator></app-loading-indicator>
   </div>
@@ -47,15 +45,8 @@
       </ng-template>
 
       <ng-template pTemplate="end">
-        <button
-          pButton
-          type="button"
-          icon="pi pi-download"
-          label="Download"
-          class="p-button-outlined"
-          style="margin-left: 0.5rem"
-          (click)="onDownload()"
-        ></button>
+        <p-button label="Download" icon="pi pi-download" severity="secondary" variant="outlined"
+                  (click)="onDownload()"/>
       </ng-template>
     </p-toolbar>
 
@@ -180,15 +171,9 @@
                     </div>
                   </ng-template>
                   <ng-template pTemplate="end">
-                    <button
-                      pButton
-                      type="button"
-                      icon="pi pi-trash"
-                      label="Löschen"
-                      class="p-button-danger p-button-outlined"
-                      [disabled]="!selectedListItem()"
-                      (click)="onDeleteSelected()"
-                    ></button>
+                    <p-button label="Löschen" icon="pi pi-trash" severity="danger" variant="outlined"
+                              [disabled]="!selectedListItem()"
+                              (click)="onDeleteSelected()"/>
                   </ng-template>
                 </p-toolbar>
 
@@ -231,7 +216,7 @@
                     <colgroup>
                       @for (col of columnNames(); track col) {
                         <!-- width = saved width OR Excel-like default -->
-                        <col [style.width]="getColWidth(col) || defaultColWidth()" />
+                        <col [style.width]="getColWidth(col) || defaultColWidth()"/>
                       }
                     </colgroup>
                   </ng-template>
