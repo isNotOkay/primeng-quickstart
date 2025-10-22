@@ -823,6 +823,87 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
+  // Add this test near your other sorting tests (e.g., in the "Left listbox groups — ..." describe)
+
+  test('sorting issues a single request per click (no duplicates)', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_SortSingle_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+    await expectHeaderVisible(page, 'Name');
+
+    const pathBase = `/api/web-viewer/tables/${encodeURIComponent(tableName)}`;
+
+    async function expectSingleSortRequest(dir: 'asc' | 'desc') {
+      let started = 0;
+      let finished = 0;
+      let failed = 0;
+
+      const match = (url: string) =>
+        url.includes(pathBase) && url.includes('sortBy=Name') && url.includes(`sortDir=${dir}`);
+
+      const onReq = (req: any) => {
+        if (match(req.url())) started++;
+      };
+      const onFinished = (req: any) => {
+        if (match(req.url())) finished++;
+      };
+      const onFailed = (req: any) => {
+        if (match(req.url())) failed++;
+      };
+
+      page.on('request', onReq);
+      page.on('requestfinished', onFinished);
+      page.on('requestfailed', onFailed);
+
+      // Click "Name" header and wait for the matching response
+      let header = page.getByRole('columnheader', { name: 'Name', exact: true });
+      if ((await header.count()) === 0) {
+        header = page.locator('p-table thead th').filter({ hasText: 'Name' });
+      }
+
+      const wait = page.waitForResponse((res) => match(res.url()), { timeout: UI_TIMEOUT });
+      await header.click();
+      const resp = await wait;
+      expect(resp.ok()).toBeTruthy();
+
+      // Short buffer to catch any trailing duplicate emissions
+      await page.waitForTimeout(300);
+
+      // Assert exactly one matching request, none canceled/failed
+      expect(started).toBe(1);
+      expect(finished).toBe(1);
+      expect(failed).toBe(0);
+
+      page.off('request', onReq);
+      page.off('requestfinished', onFinished);
+      page.off('requestfailed', onFailed);
+    }
+
+    // First click -> asc, second click -> desc
+    await expectSingleSortRequest('asc');
+    await expectSingleSortRequest('desc');
+
+    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+  });
+
+
   test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 

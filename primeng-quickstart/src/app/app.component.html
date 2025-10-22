@@ -182,92 +182,90 @@
                   </ng-template>
                 </p-toolbar>
 
-                <!-- Render only after BOTH data + fresh columns are ready -->
+                <!-- Always render the table; overlay spinner during loads -->
+                <p-table
+                  style="overflow: hidden"
+                  [value]="rows()"
+                  size="small"
+                  dataKey="id"
+                  [rowTrackBy]="rowTrackBy"
+                  showGridlines
+                  [resizableColumns]="true"
+                  columnResizeMode="expand"
+                  (onColResize)="onColResize()"
+
+                  [paginator]="true"
+                  paginatorPosition="bottom"
+                  [rows]="pageSize()"
+                  [totalRecords]="totalCount()"
+                  [first]="pageIndex() * pageSize()"
+                  [showCurrentPageReport]="true"
+                  currentPageReportTemplate="{first} bis {last} von {totalRecords}"
+
+                  [scrollable]="true"
+                  scrollHeight="flex"
+                  [style]="{ flex: '1 1 0' }"
+                  [tableStyle]="{ width: 'max-content' }"
+
+                  sortMode="single"
+                  [sortField]="sortBy() ?? ''"
+                  [sortOrder]="sortDir() === 'asc' ? 1 : -1"
+                  (onSort)="onSort($event)"
+
+                  (onPage)="onPage($event)"
+
+                  [lazy]="true"
+                  [lazyLoadOnInit]="false"
+                >
+                  <ng-template pTemplate="colgroup">
+                    <colgroup>
+                      @for (col of columnNames(); track col) {
+                        <col [style.width]="getColWidth(col) || null"/>
+                      }
+                    </colgroup>
+                  </ng-template>
+
+                  <ng-template pTemplate="header">
+                    <tr>
+                      @for (col of columnNames(); track col) {
+                        <th pResizableColumn [pSortableColumn]="col">
+                          <div style="display: flex; align-items: center; gap: 0.5rem">
+                            {{ col }}
+                            <p-sortIcon [field]="col"></p-sortIcon>
+                          </div>
+                        </th>
+                      }
+                    </tr>
+                  </ng-template>
+
+                  <ng-template pTemplate="body" let-row>
+                    <tr>
+                      @for (col of columnNames(); track col) {
+                        <td
+                          [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
+                          style="font-variant-numeric: tabular-nums"
+                        >
+                          {{ row[col] }}
+                        </td>
+                      }
+                    </tr>
+                  </ng-template>
+
+                  <!-- No rows → keep headers visible and show message inside the table -->
+                  <ng-template pTemplate="emptymessage">
+                    <tr>
+                      <td [attr.colspan]="columnNames().length || 1">
+                        <div style="padding: 0.75rem">
+                          Keine Daten vorhanden.
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+
+                <!-- Overlay the spinner while loading rows/columns -->
                 @if (loadingSelection() || loadingRows()) {
                   <app-loading-indicator></app-loading-indicator>
-                } @else {
-
-                  <!-- Data finished loading → always render the table.
-                       Headers come from columnNames(); emptymessage handles 0 rows. -->
-                  <p-table
-                    style="overflow: hidden"
-                    [value]="rows()"
-                    size="small"
-                    dataKey="id"
-                    [rowTrackBy]="rowTrackBy"
-                    showGridlines
-                    [resizableColumns]="true"
-                    columnResizeMode="expand"
-                    (onColResize)="onColResize()"
-
-                    [paginator]="true"
-                    paginatorPosition="bottom"
-                    [rows]="pageSize()"
-                    [totalRecords]="totalCount()"
-                    [first]="pageIndex() * pageSize()"
-                    [showCurrentPageReport]="true"
-                    currentPageReportTemplate="{first} bis {last} von {totalRecords}"
-
-                    [scrollable]="true"
-                    scrollHeight="flex"
-                    [style]="{ flex: '1 1 0' }"
-                    [tableStyle]="{ width: 'max-content' }"
-
-                    sortMode="single"
-                    [sortField]="sortBy() ?? ''"
-                    [sortOrder]="sortDir() === 'asc' ? 1 : -1"
-                    (onSort)="onSort($event)"
-
-                    (onPage)="onPage($event)"
-
-                    [lazy]="true"
-                    [lazyLoadOnInit]="false"
-                  >
-                    <ng-template pTemplate="colgroup">
-                      <colgroup>
-                        @for (col of columnNames(); track col) {
-                          <col [style.width]="getColWidth(col) || null"/>
-                        }
-                      </colgroup>
-                    </ng-template>
-
-                    <ng-template pTemplate="header">
-                      <tr>
-                        @for (col of columnNames(); track col) {
-                          <th pResizableColumn [pSortableColumn]="col">
-                            <div style="display: flex; align-items: center; gap: 0.5rem">
-                              {{ col }}
-                              <p-sortIcon [field]="col"></p-sortIcon>
-                            </div>
-                          </th>
-                        }
-                      </tr>
-                    </ng-template>
-
-                    <ng-template pTemplate="body" let-row>
-                      <tr>
-                        @for (col of columnNames(); track col) {
-                          <td
-                            [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
-                            style="font-variant-numeric: tabular-nums"
-                          >
-                            {{ row[col] }}
-                          </td>
-                        }
-                      </tr>
-                    </ng-template>
-
-                    <!-- No rows → keep headers visible and show message inside the table -->
-                    <ng-template pTemplate="emptymessage">
-                      <tr>
-                        <td [attr.colspan]="columnNames().length || 1">
-                          <div style="padding: 0.75rem">
-                            Keine Daten vorhanden.
-                          </div>
-                        </td>
-                      </tr>
-                    </ng-template>
-                  </p-table>
                 }
               }
             }
