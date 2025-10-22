@@ -16,7 +16,7 @@ import { SelectModule } from 'primeng/select';
 import { ListboxModule } from 'primeng/listbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { Toolbar } from 'primeng/toolbar';
-import {Button, ButtonDirective} from 'primeng/button';
+import { Button, ButtonDirective } from 'primeng/button';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { Toast } from 'primeng/toast';
@@ -87,13 +87,11 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ── App boot/connection gating ─────────────────────────────────
-  /** 'connecting' → show full-screen loader; 'connected' → render UI; 'failed' → show only confirm dialog */
   protected readonly hubStatus = signal<HubStatus>('connecting');
 
   // ── Signals / state ────────────────────────────────────────────
   protected readonly listsLoading = signal(true);
   protected readonly loadingRows = signal(false);
-  /** Gate rendering of the selection until fresh metadata (column names) is ready */
   protected readonly loadingSelection = signal(false);
 
   protected readonly loadedTablesAndViews = signal(false);
@@ -133,23 +131,16 @@ export class AppComponent implements OnInit, OnDestroy {
   groupedOptions: Group[] = [];
   listFilter = '';
 
-  /** Prevent user unselects; remember the last non-null selection */
   private lastListSelection: string | null = null;
-  /** Distinguish programmatic sets (allowed to clear) from user actions (not allowed to clear) */
   private programmaticListSet = false;
-
-  /** De-dupe relation toasts within a short window */
-  private recentRelationToasts = new Map<string, number>(); // key -> expiry timestamp
+  private recentRelationToasts = new Map<string, number>();
 
   constructor() {}
 
   ngOnInit() {
-    // Subscriptions can be set up early
     this.subscriptions.push(
       this.signalRService.onCreateOrUpdateRelation$.subscribe((event) => {
         this.loadTablesAndViews(event);
-
-        // De-dupe toast
         const kind = this.relationTypeLabel(event.relationType);
         this.toastOnceForRelation(kind, event);
       }),
@@ -165,13 +156,12 @@ export class AppComponent implements OnInit, OnDestroy {
       }),
     );
 
-    // Show dialog fast if we lose the connection later
     this.subscriptions.push(
       this.signalRService.onReconnecting$.subscribe(() => {
         if (this.reconnectTimer || this.connectionDialogShown) return;
         this.reconnectTimer = setTimeout(() => {
           this.reconnectTimer = null;
-          this.showReloadConfirm(); // will not re-show if already shown
+          this.showReloadConfirm();
         }, 1500);
       }),
       this.signalRService.onReconnected$.subscribe(() => {
@@ -181,13 +171,12 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }),
       this.signalRService.onConnectionLost$.subscribe(() => {
-        // Hide full-screen loader (if any) and show the reload dialog
         this.hubStatus.set('failed');
         this.showReloadConfirm();
       }),
     );
 
-    // ── Boot: connect hub first; only then load engine + lists ──
+    // Boot: connect hub, then load engine & lists
     this.hubStatus.set('connecting');
     this.listsLoading.set(true);
 
@@ -196,7 +185,6 @@ export class AppComponent implements OnInit, OnDestroy {
       .then(() => {
         this.hubStatus.set('connected');
 
-        // Now load persisted engine and, after that, the lists
         this.apiService.getEngine().subscribe({
           next: (dto) => {
             this.engineControl.setValue(dto.engine, { emitEvent: false });
@@ -207,23 +195,20 @@ export class AppComponent implements OnInit, OnDestroy {
           error: () => {
             this.notificationService.error('Datenquelle laden fehlgeschlagen.');
             this.loadedTablesAndViews.set(false);
-            // still allow UI to render; left side will be empty
             this.listsLoading.set(false);
           },
         });
       })
-      .catch(() => {
-        // start/negotiate failed → onConnectionLost$ handler above sets 'failed' & shows dialog
-      });
+      .catch(() => {});
 
-    // Persist engine changes + refresh lists (only after connected)
+    // Persist engine changes + refresh lists
     this.engineControl.valueChanges.subscribe((engine) => {
       if (engine == null) return;
 
       this.saveCurrentTableWidths();
       this.loadRowsSubscription?.unsubscribe();
       this.clearSelectedListItem();
-      this.setListSelection(null, false); // programmatic clear allowed
+      this.setListSelection(null, false);
       this.groupedOptions = [];
       this.allGroups = [];
       this.listsLoading.set(true);
@@ -245,20 +230,17 @@ export class AppComponent implements OnInit, OnDestroy {
       this.saveCurrentTableWidths();
 
       if (!val) {
-        // If this is a programmatic clear (engine switch, deletion, etc.), allow it.
         if (this.programmaticListSet) {
           this.selectedListItem.set(null);
           this.remountTable();
           return;
         }
-        // User tried to unselect → snap back to last selection
         if (this.lastListSelection) {
           this.listControl.setValue(this.lastListSelection, { emitEvent: false });
         }
         return;
       }
 
-      // Non-null selection: remember it and proceed
       this.lastListSelection = val;
 
       const sel = this.parseSelection(val);
@@ -303,7 +285,9 @@ export class AppComponent implements OnInit, OnDestroy {
     const sel = this.selectedListItem();
     if (!sel) return;
 
-    // Placeholder confirmation; wire to your delete API next.
+    // Excel has no views, but list never shows them when Excel is selected.
+    const isView = sel.relationType === RelationType.View;
+
     this.confirmationService.confirm({
       header: 'Löschen bestätigen',
       message: `Soll „${sel.label}“ wirklich gelöscht werden?`,
@@ -313,9 +297,29 @@ export class AppComponent implements OnInit, OnDestroy {
       acceptButtonStyleClass: 'p-button-danger',
       rejectButtonStyleClass: 'p-button-secondary',
       accept: () => {
-        // TODO: Call API to drop the selected table/view, then rely on SignalR to refresh.
-        // this.apiService.dropRelation(sel.relationType, sel.id).subscribe(...);
-        this.notificationService.warn('Löschen ist noch nicht verdrahtet.');
+        this.apiService.deleteRelation(sel.relationType, sel.id).subscribe({
+          next: () => {
+            // ✅ Do NOT show a local success toast here.
+            // Rely on the SignalR onDeleteRelation$ handler to show the single info toast.
+
+            this.setListSelection(null, false);
+            this.clearSelectedListItem();
+          },
+          error: (err) => {
+            const status = err?.status;
+            if (status === 404) {
+              this.notificationService.warn(`${this.relationTypeLabel(sel.relationType)} existiert nicht mehr.`);
+              this.setListSelection(null, false);
+              this.clearSelectedListItem();
+            } else if (status === 400) {
+              this.notificationService.error('Ungültiger Name oder Anfrage.');
+            } else if (sel.relationType === RelationType.View && this.isExcel()) {
+              this.notificationService.warn('Sichten werden in Excel nicht unterstützt.');
+            } else {
+              this.notificationService.error('Löschen fehlgeschlagen.');
+            }
+          },
+        });
       },
     });
   }
@@ -427,14 +431,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private selectListItem(item: ListItemModel): void {
     this.selectedListItem.set(item);
-    this.updateColumnNames(); // may be stale; will refresh below
+    this.updateColumnNames();
 
     this.resetTableState();
     this.remountTable();
 
-    // Kick off both operations in parallel:
-    this.refreshColumnsForCurrentSelection(); // refresh metadata (columns) for the selected relation
-    this.loadTableData();                     // load data page
+    this.refreshColumnsForCurrentSelection();
+    this.loadTableData();
   }
 
   private updateColumnNames(): void {
@@ -465,7 +468,6 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Refresh column names for the currently selected relation using existing list endpoints (no extra API). */
   private refreshColumnsForCurrentSelection(): void {
     const sel = this.selectedListItem();
     if (!sel) return;
@@ -484,10 +486,7 @@ export class AppComponent implements OnInit, OnDestroy {
         const found = (resp.items ?? []).find((r) => r.name === sel.id);
         const cols = found?.columnNames ?? [];
         if (cols.length) {
-          // update signals
           this.columnNames.set(cols);
-
-          // sync selected item & caches for future reselects
           const updated: ListItemModel = { ...sel, columnNames: cols };
           this.selectedListItem.set(updated);
           if (sel.relationType === RelationType.View) {
@@ -498,9 +497,7 @@ export class AppComponent implements OnInit, OnDestroy {
         }
         finish();
       },
-      error: () => {
-        finish();
-      },
+      error: () => finish(),
     });
   }
 
@@ -649,16 +646,15 @@ export class AppComponent implements OnInit, OnDestroy {
     const key = `${event.relationType}|${event.name}|${event.created ? 'created' : 'updated'}`;
     const now = Date.now();
     const until = this.recentRelationToasts.get(key) ?? 0;
-    if (until > now) return; // duplicate within window → skip
+    if (until > now) return;
 
-    this.recentRelationToasts.set(key, now + 1000); // 1s window
+    this.recentRelationToasts.set(key, now + 1000);
     this.notificationService.info(
       event.created
         ? `${kind} "${event.name}" wurde erstellt.`
         : `${kind} "${event.name}" wurde aktualisiert.`,
     );
 
-    // light cleanup
     for (const [k, t] of this.recentRelationToasts) if (t <= now) this.recentRelationToasts.delete(k);
   }
 

@@ -65,6 +65,12 @@ export class ApiService {
     });
   }
 
+  // ── Delete (new) ───────────────────────────────────────────────
+  deleteRelation(relationType: RelationType, id: string): Observable<void> {
+    const path = relationType === RelationType.Table ? 'tables' : 'views';
+    return this.http.delete<void>(`${this.apiPrefix}/${path}/${encodeURIComponent(id)}`);
+  }
+
   // ── Download ───────────────────────────────────────────────────
   downloadEngineFile(engine: EngineType) {
     // backend expects query param `engine`; keep casing

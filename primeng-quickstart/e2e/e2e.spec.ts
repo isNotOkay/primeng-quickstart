@@ -21,6 +21,18 @@ async function putEngine(request: APIRequestContext, engine: 'sqlite' | 'excel')
   expect((body?.engine ?? '').toLowerCase()).toBe(engine);
 }
 
+/** Clicks the confirm 'Löschen' button in the PrimeNG ConfirmDialog */
+async function confirmPrimeDelete(page: Page) {
+  // Find the visible PrimeNG dialog by its container rather than ARIA name
+  const dlg = page.locator('.p-dialog:visible').filter({
+    has: page.getByRole('button', { name: 'Abbrechen' }),
+  }).last();
+
+  await expect(dlg).toBeVisible({ timeout: UI_TIMEOUT });
+  await dlg.getByRole('button', { name: 'Löschen', exact: true }).click();
+}
+
+
 /** Wait until PrimeNG listbox shows at least one group and one item/placeholder */
 async function waitForListsReady(page: Page) {
   const listbox = page.locator('.left-listbox');
@@ -1076,15 +1088,15 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(deletedToast).toHaveCount(1);
   });
 
-  test('download endpoint (SQLite) returns 200 OK', async ({ request }) => {
+  test('download endpoint (SQLite) returns 200 OK', async ({request}) => {
     await putEngine(request, 'sqlite');
 
     // (Optional) ensure file exists by touching the DB
     const tableName = `E2E_DL_SQL_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
-      create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+      target: {name: tableName},
+      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
     });
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Sqlite`);
@@ -1092,19 +1104,109 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     expect(res.ok(), bodyPreview).toBeTruthy();
   });
 
-  test('download endpoint (Excel) returns 200 OK', async ({ request }) => {
+  test('download endpoint (Excel) returns 200 OK', async ({request}) => {
     await putEngine(request, 'excel');
 
     // Ensure workbook exists by creating a sheet
     const sheetName = `E2E_DL_XL_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: sheetName },
-      create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+      target: {name: sheetName},
+      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
     });
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Excel`);
     const bodyPreview = await res.text(); // for easier debugging on failure
     expect(res.ok(), bodyPreview).toBeTruthy();
+  });
+
+  test('deletes a table via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_SQL_DeleteTable_UI_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    await waitForListItemVisible(page, tableName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+    await expectHeaderVisible(page, 'Name');
+
+    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await confirmPrimeDelete(page);
+
+    await waitForListItemHidden(page, tableName);
+    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
+  });
+
+  test('deletes a view via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const viewName = `E2E_SQL_DeleteView_UI_${Date.now()}`;
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    await dsl(request, {
+      operation: 'Select',
+      target: { name: viewName },
+      select: {
+        from: 'Album',
+        columns: [{ expr: 'AlbumId', as: 'AlbumId' }],
+        limit: 1,
+      },
+    });
+
+    await waitForListItemVisible(page, viewName).then((i) => i.click());
+    await expectHeaderVisible(page, 'AlbumId');
+
+    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await confirmPrimeDelete(page);
+
+    await waitForListItemHidden(page, viewName);
+    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
+  });
+
+  test('deletes a sheet via UI (Excel): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'excel');
+
+    // Excel caps sheet names at 31 chars; keep it short and unique.
+    const stamp = Date.now().toString(36);
+    const sheetName = `XL_DEL_${stamp}`;
+
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: sheetName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'Excel');
+
+    await waitForListItemVisible(page, sheetName).then((i) => i.click());
+    await expectHeaderVisible(page, 'Id');
+    await expectHeaderVisible(page, 'Name');
+
+    await page.getByRole('button', { name: 'Löschen', exact: true }).click();
+    await confirmPrimeDelete(page);
+
+    await waitForListItemHidden(page, sheetName);
+    await expect(page.getByText('Keine Tabelle ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });
