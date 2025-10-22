@@ -132,6 +132,11 @@ export class AppComponent implements OnInit, OnDestroy {
   groupedOptions: Group[] = [];
   listFilter = '';
 
+  /** Prevent user unselects; remember the last non-null selection */
+  private lastListSelection: string | null = null;
+  /** Distinguish programmatic sets (allowed to clear) from user actions (not allowed to clear) */
+  private programmaticListSet = false;
+
   constructor() {}
 
   ngOnInit() {
@@ -150,7 +155,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.signalRService.onDeleteRelation$.subscribe((event) => {
         const wasSelected = this.selectedListItem()?.id === event.name;
         this.loadTablesAndViews();
-        if (wasSelected) this.listControl.setValue(null, { emitEvent: false });
+        if (wasSelected) this.setListSelection(null, false);
         const kind = this.relationTypeLabel(event.relationType);
         this.notificationService.info(`${kind} "${event.name}" wurde gelöscht.`);
       }),
@@ -214,7 +219,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.saveCurrentTableWidths();
       this.loadRowsSubscription?.unsubscribe();
       this.clearSelectedListItem();
-      this.listControl.setValue(null, { emitEvent: false });
+      this.setListSelection(null, false); // programmatic clear allowed
       this.groupedOptions = [];
       this.allGroups = [];
       this.listsLoading.set(true);
@@ -236,10 +241,22 @@ export class AppComponent implements OnInit, OnDestroy {
       this.saveCurrentTableWidths();
 
       if (!val) {
-        this.selectedListItem.set(null);
-        this.remountTable();
+        // If this is a programmatic clear (engine switch, deletion, etc.), allow it.
+        if (this.programmaticListSet) {
+          this.selectedListItem.set(null);
+          this.remountTable();
+          return;
+        }
+        // User tried to unselect → snap back to last selection
+        if (this.lastListSelection) {
+          this.listControl.setValue(this.lastListSelection, { emitEvent: false });
+        }
         return;
       }
+
+      // Non-null selection: remember it and proceed
+      this.lastListSelection = val;
+
       const sel = this.parseSelection(val);
       const item = this.findInLists(sel.type, sel.id);
       if (item) this.selectListItem(item);
@@ -356,10 +373,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
         if (listItem) {
           this.selectListItem(listItem);
-          this.listControl.setValue(this.makeValue(listItem.relationType, listItem.id), { emitEvent: false });
+          this.setListSelection(this.makeValue(listItem.relationType, listItem.id), false);
         } else {
           this.clearSelectedListItem();
-          this.listControl.setValue(null, { emitEvent: false });
+          this.setListSelection(null, false);
         }
       },
       error: () => {
@@ -594,6 +611,13 @@ export class AppComponent implements OnInit, OnDestroy {
     const id = rest.join('|');
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
     return { type, id };
+  }
+
+  private setListSelection(value: string | null, emitEvent = false) {
+    this.programmaticListSet = true;
+    this.listControl.setValue(value, { emitEvent });
+    this.programmaticListSet = false;
+    this.lastListSelection = value;
   }
 
   rowTrackBy(i: number, p: any) {

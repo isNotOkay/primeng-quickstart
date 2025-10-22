@@ -935,4 +935,52 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(clearBtn).toHaveCount(0);
     await expect(input).toBeFocused();
   });
+
+  test('left listbox: selection cannot be cleared by clicking the selected item again', async ({ page, request, baseURL }) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_NoUnselect_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    // Select it once → table headers should appear
+    const item = await waitForListItemVisible(page, tableName);
+    await item.click();
+    await expectHeaderVisible(page, 'Id');
+
+    // Try to unselect by clicking the same item again
+    await item.click();
+
+    // Still selected: headers remain visible
+    await expectHeaderVisible(page, 'Id');
+
+    // And the list option should still carry the "selected" class
+    const li = page
+      .locator('.left-listbox li.p-listbox-option')
+      .filter({ hasText: tableName })
+      .first();
+    await expect(li).toHaveClass(/p-listbox-option-selected/);
+
+    // Optional: attempt unselect via keyboard and assert it also sticks
+    await li.focus();
+    await page.keyboard.press('Enter');
+    await expectHeaderVisible(page, 'Id');
+    await expect(li).toHaveClass(/p-listbox-option-selected/);
+
+    // Cleanup
+    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+  });
+
 });
