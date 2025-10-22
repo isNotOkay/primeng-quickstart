@@ -13,10 +13,15 @@
 <p-confirmdialog></p-confirmdialog>
 
 <!-- Boot gating:
-     - Show ONLY the loader while the hub is connecting
-     - After connected, still show loader until initial lists finish loading
-     - If hub failed: show nothing here (only the dialog is visible) -->
-@if (hubStatus() === 'connecting' || (hubStatus() === 'connected' && listsLoading())) {
+     - Full-page loader ONLY while the hub is connecting OR the very first lists load
+     - After first load, keep the UI visible and overlay spinners locally while reloading -->
+@if (
+  hubStatus() === 'connecting' ||
+  (hubStatus() === 'connected' &&
+    !loadedTablesAndViews() &&
+    tableItems().length === 0 &&
+    viewItems().length === 0)
+  ) {
   <div style="height: 100vh; width: 100%; display: grid; place-items: center">
     <app-loading-indicator></app-loading-indicator>
   </div>
@@ -63,7 +68,7 @@
       >
         <!-- Left panel -->
         <ng-template #panel>
-          <div style="display: flex; flex-direction: column; width: 100%; height: 100%">
+          <div style="display: flex; flex-direction: column; width: 100%; height: 100%; position: relative">
             <!-- Clearable search -->
             <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
               <div class="search-clearable" style="position: relative; width: 100%">
@@ -136,6 +141,11 @@
                 </div>
               </ng-template>
             </p-listbox>
+
+            <!-- Overlay spinner while lists are refreshing after initial boot -->
+            @if (listsLoading() && (tableItems().length > 0 || viewItems().length > 0)) {
+              <app-loading-indicator></app-loading-indicator>
+            }
           </div>
         </ng-template>
 

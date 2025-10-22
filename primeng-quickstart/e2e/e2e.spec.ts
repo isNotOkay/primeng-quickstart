@@ -904,7 +904,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   });
 
 
-  test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
+  test('column widths persist; new column gets cached after first resize', async ({ page, request, baseURL }) => {
     await putEngine(request, 'sqlite');
 
     const t1 = `E2E_Width_NewCol_A_${Date.now()}`;
@@ -914,8 +914,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     for (const name of [t1, t2]) {
       await dsl(request, {
         operation: 'Create',
-        target: {name},
-        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
+        target: { name },
+        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }, { name: 'Name', type: 'TEXT' }] },
       });
     }
 
@@ -926,17 +926,26 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await waitForListItemVisible(page, t1).then((i) => i.click());
     await expectHeaderVisible(page, 'Name');
 
-    // Helpers
+    // Helpers (prefer the scrollable header table so we always measure the right header clone)
     const headerLocator = async (col: string) => {
-      const byRole = page.getByRole('columnheader', {name: col, exact: true});
+      let th = page
+        .locator('.p-table-scrollable-header .p-table-scrollable-header-table thead th')
+        .filter({ hasText: col })
+        .first();
+      if ((await th.count()) > 0) return th;
+
+      const byRole = page.getByRole('columnheader', { name: col, exact: true });
       if ((await byRole.count()) > 0) return byRole.first();
-      return page.locator('p-table thead th').filter({hasText: col}).first();
+
+      return page.locator('p-table thead th').filter({ hasText: col }).first();
     };
+
     const getHeaderWidth = async (col: string) => {
       const th = await headerLocator(col);
-      await expect(th).toBeVisible({timeout: UI_TIMEOUT});
+      await expect(th).toBeVisible({ timeout: UI_TIMEOUT });
       return th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
     };
+
     const dragResizer = async (col: string, deltaX: number) => {
       const th = await headerLocator(col);
       const resizer = th.locator('.p-column-resizer, [data-pc-section="columnresizer"]');
@@ -954,32 +963,39 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Resize "Name" once and verify it sticks after switching away/back
     const wNameBefore = await getHeaderWidth('Name');
     await dragResizer('Name', 100);
-    await page.waitForTimeout(50);
-    const wNameAfter = await getHeaderWidth('Name');
-    expect(wNameAfter).toBeGreaterThan(wNameBefore + 30);
 
+    await expect
+      .poll(async () => await getHeaderWidth('Name'), { timeout: UI_TIMEOUT })
+      .toBeGreaterThan(wNameBefore + 30);
+
+    const wNameAfter = await getHeaderWidth('Name');
+
+    // Switch to other table and back
     await waitForListItemVisible(page, t2).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
     await waitForListItemVisible(page, t1).then((i) => i.click());
     await expectHeaderVisible(page, 'Name');
 
-    const wNameBack = await getHeaderWidth('Name');
-    expect(Math.abs(wNameBack - wNameAfter)).toBeLessThanOrEqual(6);
+    // Allow cloned header to settle; poll until near the cached width
+    await expect
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .toBeLessThanOrEqual(6);
 
     // ── Extra step: add a new column, ensure old widths stay, then cache new column after first resize ──
     const newCol = 'AddedCol';
     await dsl(request, {
       operation: 'Alter',
-      target: {name: t1},
-      alter: {actions: [{addColumn: {name: newCol, type: 'TEXT'}}]},
+      target: { name: t1 },
+      alter: { actions: [{ addColumn: { name: newCol, type: 'TEXT' } }] },
     });
 
     await expectHeaderVisible(page, newCol);
 
-    // Old column ("Name") should retain width
-    const wNamePostAdd = await getHeaderWidth('Name');
-    expect(Math.abs(wNamePostAdd - wNameAfter)).toBeLessThanOrEqual(6);
+    // Old column ("Name") should retain width (poll to avoid transient header clone reads)
+    await expect
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .toBeLessThanOrEqual(6);
 
     // New column starts with some auto width (>0)
     const wNewDefault = await getHeaderWidth(newCol);
@@ -987,9 +1003,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Resize new column and ensure width increases and is cached
     await dragResizer(newCol, 120);
-    await page.waitForTimeout(50);
+    await expect
+      .poll(async () => await getHeaderWidth(newCol), { timeout: UI_TIMEOUT })
+      .toBeGreaterThan(wNewDefault + 40);
     const wNewAfter = await getHeaderWidth(newCol);
-    expect(wNewAfter).toBeGreaterThan(wNewDefault + 40);
 
     // Switch away and back → both "Name" and the *new* column should keep widths
     await waitForListItemVisible(page, t2).then((i) => i.click());
@@ -998,17 +1015,20 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await waitForListItemVisible(page, t1).then((i) => i.click());
     await expectHeaderVisible(page, newCol);
 
-    const wNameFinal = await getHeaderWidth('Name');
-    const wNewFinal = await getHeaderWidth(newCol);
+    await expect
+      .poll(async () => Math.abs((await getHeaderWidth('Name')) - wNameAfter), { timeout: UI_TIMEOUT })
+      .toBeLessThanOrEqual(6);
 
-    expect(Math.abs(wNameFinal - wNameAfter)).toBeLessThanOrEqual(6);
-    expect(Math.abs(wNewFinal - wNewAfter)).toBeLessThanOrEqual(6);
+    await expect
+      .poll(async () => Math.abs((await getHeaderWidth(newCol)) - wNewAfter), { timeout: UI_TIMEOUT })
+      .toBeLessThanOrEqual(6);
 
     // Cleanup
     for (const name of [t1, t2]) {
-      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+      await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
     }
   });
+
 
   test('clearable search: X button appears, clears input, and keeps focus', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
@@ -1290,4 +1310,71 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await waitForListItemHidden(page, sheetName);
     await expect(page.getByText('Keine Tabelle ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
   });
+
+  test('engine switch keeps UI visible and shows list overlay (not blank screen)', async ({ page, request, baseURL }) => {
+    // Start on SQLite with at least one item present
+    await putEngine(request, 'sqlite');
+    const tableName = `E2E_EngineSwitch_UI_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: {
+        kind: 'Table',
+        schema: [
+          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+          { name: 'Name', type: 'TEXT' },
+        ],
+      },
+    });
+
+    await goHome(page, baseURL);
+
+    // Ensure initial UI is loaded and visible
+    await selectEngine(page, 'SQLite');
+    await waitForListItemVisible(page, tableName);
+
+    // Intercept tables/views requests to delay the Excel refresh long enough to observe the overlay
+    await page.route('**/api/web-viewer/tables*', async (route) => {
+      await page.waitForTimeout(400);
+      await route.continue();
+    });
+    await page.route('**/api/web-viewer/views*', async (route) => {
+      await page.waitForTimeout(400);
+      await route.continue();
+    });
+
+    // Switch to Excel WITHOUT using the helper that waits for lists to be ready
+    const selectRoot = page.locator('p-select[inputid="dataSource"]');
+    await openSelectOverlay(selectRoot);
+
+    const panel = page.locator('.p-select-panel, .p-dropdown-panel, .p-overlay, .p-select-items');
+    await expect(panel.first()).toBeVisible({ timeout: UI_TIMEOUT });
+
+    const opt = page.getByRole('option', { name: 'Excel', exact: true });
+    if ((await opt.count()) > 0) {
+      await opt.first().click({ timeout: UI_TIMEOUT });
+    } else {
+      await panel.getByText('Excel', { exact: true }).first().click({ timeout: UI_TIMEOUT });
+    }
+
+    // While lists are loading, the scaffold (toolbar + left list container) must still be visible
+    await expect(page.locator('p-toolbar').first()).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.locator('.left-listbox')).toBeVisible({ timeout: UI_TIMEOUT });
+
+    // And an overlay spinner should be shown (not a full-page blank screen)
+    await expect(page.locator('app-loading-indicator').first()).toBeVisible({ timeout: UI_TIMEOUT });
+
+    // Let the delayed requests finish and assert final state
+    await waitForListsReady(page);
+    await expectGroupHeaderVisible(page, 'TABELLEN');
+    await expectGroupHeaderHidden(page, 'SICHTEN');
+
+    // Cleanup routes and the created table
+    await page.unroute('**/api/web-viewer/tables*');
+    await page.unroute('**/api/web-viewer/views*');
+
+    await putEngine(request, 'sqlite');
+    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+  });
+
 });
