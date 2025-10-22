@@ -1075,4 +1075,36 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await page.waitForTimeout(400);
     await expect(deletedToast).toHaveCount(1);
   });
+
+  test('download endpoint (SQLite) returns 200 OK', async ({ request }) => {
+    await putEngine(request, 'sqlite');
+
+    // (Optional) ensure file exists by touching the DB
+    const tableName = `E2E_DL_SQL_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: tableName },
+      create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+    });
+
+    const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Sqlite`);
+    const bodyPreview = await res.text(); // for easier debugging on failure
+    expect(res.ok(), bodyPreview).toBeTruthy();
+  });
+
+  test('download endpoint (Excel) returns 200 OK', async ({ request }) => {
+    await putEngine(request, 'excel');
+
+    // Ensure workbook exists by creating a sheet
+    const sheetName = `E2E_DL_XL_${Date.now()}`;
+    await dsl(request, {
+      operation: 'Create',
+      target: { name: sheetName },
+      create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }] },
+    });
+
+    const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Excel`);
+    const bodyPreview = await res.text(); // for easier debugging on failure
+    expect(res.ok(), bodyPreview).toBeTruthy();
+  });
 });
