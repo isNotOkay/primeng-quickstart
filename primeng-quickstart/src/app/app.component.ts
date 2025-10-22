@@ -71,6 +71,8 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
   @ViewChild('filterInput') private filterInput?: ElementRef<HTMLInputElement>;
+  private readonly DEFAULT_COL_PX = 80;
+
 
   protected readonly EngineType = EngineType;
   readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
@@ -341,6 +343,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.allGroups = groups;
     this.applyFilter(this.listFilter);
+  }
+
+  defaultColWidth(): string {
+    return `${this.DEFAULT_COL_PX}px`;
   }
 
   applyFilter(query: string) {

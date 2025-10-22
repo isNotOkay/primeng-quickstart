@@ -15,10 +15,18 @@
   }
 }
 
-
 .right-panel {
   position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+// Prevent that cells get too wide per default. Widths applied by the user will override this.
+::ng-deep th,
+::ng-deep td {
+  max-width: 300px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

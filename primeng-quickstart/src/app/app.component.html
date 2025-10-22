@@ -230,7 +230,8 @@
                   <ng-template pTemplate="colgroup">
                     <colgroup>
                       @for (col of columnNames(); track col) {
-                        <col [style.width]="getColWidth(col) || null"/>
+                        <!-- width = saved width OR Excel-like default -->
+                        <col [style.width]="getColWidth(col) || defaultColWidth()" />
                       }
                     </colgroup>
                   </ng-template>
