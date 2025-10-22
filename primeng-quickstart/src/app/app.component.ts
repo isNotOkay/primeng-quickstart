@@ -28,6 +28,7 @@ import {PagedResultApiModel} from './models/api/paged-result.api-model';
 import {RowModel} from './models/row.model';
 import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
 import {TableStateService} from './services/table-state.service';
+import {Panel} from 'primeng/panel';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -63,6 +64,7 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
     ConfirmDialog,
     LoadingIndicator,
     Button,
+    Panel,
 
   ],
   templateUrl: './app.component.html',

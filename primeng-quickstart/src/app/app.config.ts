@@ -12,7 +12,12 @@ export const MyPreset = definePreset(Aura, {
       css: `
         .p-toast { --p-toast-width: 40vw; }
       `
-    }
+    },
+    datatable: {
+      bodyCell: {
+        sm: { padding: '0.25rem 0.5rem' }
+      }
+    },
   },
   semantic: {
     primary: {
