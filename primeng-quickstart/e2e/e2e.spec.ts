@@ -715,7 +715,11 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     });
   });
 
-  test('disabled placeholder keeps neutral bg even if "selected" class is present', async ({ page, request, baseURL }) => {
+  test('disabled placeholder keeps neutral bg even if "selected" class is present', async ({
+                                                                                             page,
+                                                                                             request,
+                                                                                             baseURL
+                                                                                           }) => {
     // Use SQLite so both groups exist and filtering yields placeholders for each
     await putEngine(request, 'sqlite');
     await goHome(page, baseURL);
@@ -728,24 +732,24 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Grab the first placeholder option (disabled)
     const placeholder = page
       .locator('.left-listbox')
-      .locator('li.p-listbox-option.p-disabled', { hasText: 'Keine Ergebnisse gefunden.' })
+      .locator('li.p-listbox-option.p-disabled', {hasText: 'Keine Ergebnisse gefunden.'})
       .first();
 
-    await expect(placeholder).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(placeholder).toBeVisible({timeout: UI_TIMEOUT});
     await expect(placeholder).toHaveClass(/p-disabled/);
 
     // Forcefully add "selected" class to simulate accidental selection
     await placeholder.evaluate((el) => (el as HTMLElement).classList.add('p-listbox-option-selected'));
 
     // Read computed background and its alpha; disabled placeholder should remain near-transparent
-    const { bg, alpha } = await placeholder.evaluate((el) => {
+    const {bg, alpha} = await placeholder.evaluate((el) => {
       const c = getComputedStyle(el as HTMLElement).backgroundColor || '';
-      const transparent = { bg: c || 'transparent', alpha: 0 };
+      const transparent = {bg: c || 'transparent', alpha: 0};
       if (!c || c === 'transparent') return transparent;
 
       const m = c.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
-      if (!m) return { bg: c, alpha: 1 };
-      return { bg: c, alpha: m[4] ? parseFloat(m[4]) : 1 };
+      if (!m) return {bg: c, alpha: 1};
+      return {bg: c, alpha: m[4] ? parseFloat(m[4]) : 1};
     });
 
     // Allow a tiny theme overlay but ensure it is NOT a solid "selected" background
@@ -807,7 +811,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
-  test('column widths persist; new column gets cached after first resize', async ({ page, request, baseURL }) => {
+  test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
     const t1 = `E2E_Width_NewCol_A_${Date.now()}`;
@@ -817,8 +821,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     for (const name of [t1, t2]) {
       await dsl(request, {
         operation: 'Create',
-        target: { name },
-        create: { kind: 'Table', schema: [{ name: 'Id', type: 'INTEGER' }, { name: 'Name', type: 'TEXT' }] },
+        target: {name},
+        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
       });
     }
 
@@ -831,13 +835,13 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Helpers
     const headerLocator = async (col: string) => {
-      const byRole = page.getByRole('columnheader', { name: col, exact: true });
+      const byRole = page.getByRole('columnheader', {name: col, exact: true});
       if ((await byRole.count()) > 0) return byRole.first();
-      return page.locator('p-table thead th').filter({ hasText: col }).first();
+      return page.locator('p-table thead th').filter({hasText: col}).first();
     };
     const getHeaderWidth = async (col: string) => {
       const th = await headerLocator(col);
-      await expect(th).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(th).toBeVisible({timeout: UI_TIMEOUT});
       return th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
     };
     const dragResizer = async (col: string, deltaX: number) => {
@@ -874,8 +878,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     const newCol = 'AddedCol';
     await dsl(request, {
       operation: 'Alter',
-      target: { name: t1 },
-      alter: { actions: [{ addColumn: { name: newCol, type: 'TEXT' } }] },
+      target: {name: t1},
+      alter: {actions: [{addColumn: {name: newCol, type: 'TEXT'}}]},
     });
 
     await expectHeaderVisible(page, newCol);
@@ -909,25 +913,25 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Cleanup
     for (const name of [t1, t2]) {
-      await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
+      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
     }
   });
 
-  test('clearable search: X button appears, clears input, and keeps focus', async ({ page, request, baseURL }) => {
+  test('clearable search: X button appears, clears input, and keeps focus', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
     const input = page.locator('#list-filter-input');
-    await expect(input).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(input).toBeVisible({timeout: UI_TIMEOUT});
 
     // Clear button should not be in the DOM when empty
-    const clearBtn = page.getByRole('button', { name: 'Suche löschen' });
+    const clearBtn = page.getByRole('button', {name: 'Suche löschen'});
     await expect(clearBtn).toHaveCount(0);
 
     // Type something -> clear button appears
     await input.fill(`NO_MATCH_${Date.now()}`);
-    await expect(clearBtn).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(clearBtn).toBeVisible({timeout: UI_TIMEOUT});
 
     // Click clear -> input empty, button disappears, focus stays on input
     await clearBtn.click();
@@ -936,18 +940,22 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(input).toBeFocused();
   });
 
-  test('left listbox: selection cannot be cleared by clicking the selected item again', async ({ page, request, baseURL }) => {
+  test('left listbox: selection cannot be cleared by clicking the selected item again', async ({
+                                                                                                 page,
+                                                                                                 request,
+                                                                                                 baseURL
+                                                                                               }) => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_NoUnselect_${Date.now()}`;
     await dsl(request, {
       operation: 'Create',
-      target: { name: tableName },
+      target: {name: tableName},
       create: {
         kind: 'Table',
         schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
         ],
       },
     });
@@ -969,7 +977,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // And the list option should still carry the "selected" class
     const li = page
       .locator('.left-listbox li.p-listbox-option')
-      .filter({ hasText: tableName })
+      .filter({hasText: tableName})
       .first();
     await expect(li).toHaveClass(/p-listbox-option-selected/);
 
@@ -980,7 +988,91 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(li).toHaveClass(/p-listbox-option-selected/);
 
     // Cleanup
-    await dsl(request, { operation: 'Drop', target: { name: tableName }, drop: {} });
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
   });
 
+
+  test('SignalR toast de-dupe: exactly one toast for create and one for update', async ({page, request, baseURL}) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_Toast_CreateUpdate_${Date.now()}`;
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    // CREATE → should emit exactly one "… wurde erstellt." toast
+    await dsl(request, {
+      operation: 'Create',
+      target: {name: tableName},
+      create: {
+        kind: 'Table',
+        schema: [
+          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+          {name: 'Name', type: 'TEXT'},
+        ],
+      },
+    });
+
+    // Ensure the SignalR event has propagated to the UI
+    await waitForListItemVisible(page, tableName);
+
+    const createdToast = page
+      .locator('.p-toast .p-toast-message')
+      .filter({hasText: `"${tableName}" wurde erstellt.`});
+
+    // The single create toast should appear
+    await expect(createdToast.first()).toBeVisible({timeout: UI_TIMEOUT});
+    // Short buffer to catch any duplicate emissions (dedupe window is 1s)
+    await page.waitForTimeout(400);
+    await expect(createdToast).toHaveCount(1);
+
+    // UPDATE (alter table) → should emit exactly one "… wurde aktualisiert." toast
+    await dsl(request, {
+      operation: 'Alter',
+      target: {name: tableName},
+      alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
+    });
+
+    const updatedToast = page
+      .locator('.p-toast .p-toast-message')
+      .filter({hasText: `"${tableName}" wurde aktualisiert.`});
+
+    await expect(updatedToast.first()).toBeVisible({timeout: UI_TIMEOUT});
+    await page.waitForTimeout(400);
+    await expect(updatedToast).toHaveCount(1);
+
+    // Cleanup
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+  });
+
+  test('SignalR toast de-dupe: exactly one toast for delete', async ({page, request, baseURL}) => {
+    await putEngine(request, 'sqlite');
+
+    const tableName = `E2E_Toast_Delete_${Date.now()}`;
+
+    await goHome(page, baseURL);
+    await selectEngine(page, 'SQLite');
+
+    // Create then delete to trigger the delete SignalR event
+    await dsl(request, {
+      operation: 'Create',
+      target: {name: tableName},
+      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
+    });
+
+    await waitForListItemVisible(page, tableName);
+
+    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+
+    // Ensure the item disappeared (SignalR processed)
+    await waitForListItemHidden(page, tableName);
+
+    const deletedToast = page
+      .locator('.p-toast .p-toast-message')
+      .filter({hasText: `"${tableName}" wurde gelöscht.`});
+
+    await expect(deletedToast.first()).toBeVisible({timeout: UI_TIMEOUT});
+    await page.waitForTimeout(400);
+    await expect(deletedToast).toHaveCount(1);
+  });
 });

@@ -137,6 +137,9 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Distinguish programmatic sets (allowed to clear) from user actions (not allowed to clear) */
   private programmaticListSet = false;
 
+  /** De-dupe relation toasts within a short window */
+  private recentRelationToasts = new Map<string, number>(); // key -> expiry timestamp
+
   constructor() {}
 
   ngOnInit() {
@@ -144,10 +147,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.signalRService.onCreateOrUpdateRelation$.subscribe((event) => {
         this.loadTablesAndViews(event);
+
+        // De-dupe toast
         const kind = this.relationTypeLabel(event.relationType);
-        this.notificationService.info(
-          event.created ? `${kind} "${event.name}" wurde erstellt.` : `${kind} "${event.name}" wurde aktualisiert.`,
-        );
+        this.toastOnceForRelation(kind, event);
       }),
     );
 
@@ -618,6 +621,23 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listControl.setValue(value, { emitEvent });
     this.programmaticListSet = false;
     this.lastListSelection = value;
+  }
+
+  private toastOnceForRelation(kind: string, event: { name: string; relationType: RelationType; created: boolean }) {
+    const key = `${event.relationType}|${event.name}|${event.created ? 'created' : 'updated'}`;
+    const now = Date.now();
+    const until = this.recentRelationToasts.get(key) ?? 0;
+    if (until > now) return; // duplicate within window → skip
+
+    this.recentRelationToasts.set(key, now + 1000); // 1s window
+    this.notificationService.info(
+      event.created
+        ? `${kind} "${event.name}" wurde erstellt.`
+        : `${kind} "${event.name}" wurde aktualisiert.`,
+    );
+
+    // light cleanup
+    for (const [k, t] of this.recentRelationToasts) if (t <= now) this.recentRelationToasts.delete(k);
   }
 
   rowTrackBy(i: number, p: any) {
