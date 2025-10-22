@@ -16,7 +16,7 @@ import { SelectModule } from 'primeng/select';
 import { ListboxModule } from 'primeng/listbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { Toolbar } from 'primeng/toolbar';
-import { ButtonDirective } from 'primeng/button';
+import {Button, ButtonDirective} from 'primeng/button';
 import { IconField } from 'primeng/iconfield';
 import { InputIcon } from 'primeng/inputicon';
 import { Toast } from 'primeng/toast';
@@ -69,6 +69,7 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
     Toast,
     ConfirmDialog,
     LoadingIndicator,
+    Button,
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
@@ -295,6 +296,27 @@ export class AppComponent implements OnInit, OnDestroy {
         URL.revokeObjectURL(url);
       },
       error: () => this.notificationService.error('Download fehlgeschlagen.'),
+    });
+  }
+
+  protected onDeleteSelected(): void {
+    const sel = this.selectedListItem();
+    if (!sel) return;
+
+    // Placeholder confirmation; wire to your delete API next.
+    this.confirmationService.confirm({
+      header: 'Löschen bestätigen',
+      message: `Soll „${sel.label}“ wirklich gelöscht werden?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Löschen',
+      rejectLabel: 'Abbrechen',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-secondary',
+      accept: () => {
+        // TODO: Call API to drop the selected table/view, then rely on SignalR to refresh.
+        // this.apiService.dropRelation(sel.relationType, sel.id).subscribe(...);
+        this.notificationService.warn('Löschen ist noch nicht verdrahtet.');
+      },
     });
   }
 
