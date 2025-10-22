@@ -92,6 +92,9 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Signals / state ────────────────────────────────────────────
   protected readonly listsLoading = signal(true);
   protected readonly loadingRows = signal(false);
+  /** Gate rendering of the selection until fresh metadata (column names) is ready */
+  protected readonly loadingSelection = signal(false);
+
   protected readonly loadedTablesAndViews = signal(false);
   protected readonly tableItems = signal<ListItemModel[]>([]);
   protected readonly viewItems = signal<ListItemModel[]>([]);
@@ -382,11 +385,14 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private selectListItem(item: ListItemModel): void {
     this.selectedListItem.set(item);
-    this.updateColumnNames();
+    this.updateColumnNames(); // may be stale; will refresh below
 
     this.resetTableState();
     this.remountTable();
-    this.loadTableData();
+
+    // Kick off both operations in parallel:
+    this.refreshColumnsForCurrentSelection(); // refresh metadata (columns) for the selected relation
+    this.loadTableData();                     // load data page
   }
 
   private updateColumnNames(): void {
@@ -401,6 +407,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.rows.set([]);
     this.totalCount.set(0);
     this.loadingRows.set(false);
+    this.loadingSelection.set(false);
     this.resetTableState();
     this.remountTable();
   }
@@ -414,6 +421,45 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.dataTable) {
       (this.dataTable as any).first = 0;
     }
+  }
+
+  /** Refresh column names for the currently selected relation using existing list endpoints (no extra API). */
+  private refreshColumnsForCurrentSelection(): void {
+    const sel = this.selectedListItem();
+    if (!sel) return;
+
+    this.loadingSelection.set(true);
+
+    const meta$ =
+      sel.relationType === RelationType.View && !this.isExcel()
+        ? this.apiService.loadViews()
+        : this.apiService.loadTables();
+
+    const finish = () => this.loadingSelection.set(false);
+
+    meta$.subscribe({
+      next: (resp: { items?: RelationApiModel[] }) => {
+        const found = (resp.items ?? []).find((r) => r.name === sel.id);
+        const cols = found?.columnNames ?? [];
+        if (cols.length) {
+          // update signals
+          this.columnNames.set(cols);
+
+          // sync selected item & caches for future reselects
+          const updated: ListItemModel = { ...sel, columnNames: cols };
+          this.selectedListItem.set(updated);
+          if (sel.relationType === RelationType.View) {
+            this.viewItems.set(this.viewItems().map((i) => (i.id === sel.id ? updated : i)));
+          } else {
+            this.tableItems.set(this.tableItems().map((i) => (i.id === sel.id ? updated : i)));
+          }
+        }
+        finish();
+      },
+      error: () => {
+        finish();
+      },
+    });
   }
 
   private loadTableData(): void {

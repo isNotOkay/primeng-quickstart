@@ -141,8 +141,7 @@
           <div class="right-panel">
             @if (renderTable()) {
 
-              <!-- 1) Nothing selected → show a neutral message (outside of the table) -->
-                <!-- 1) Nothing selected → show a neutral message (outside of the table) -->
+              <!-- Nothing selected → neutral message (outside of table) -->
               @if (!selectedListItem()) {
                 <div style="height: 100%; display: grid; place-items: center; text-align: center; padding: 1rem">
                   <div>
@@ -158,22 +157,13 @@
                 </div>
               } @else {
 
-                <!-- 2) Selection exists -->
-                @if (loadingRows()) {
-                  <!-- While loading, show only the loader -->
+                <!-- Render only after BOTH data + fresh columns are ready -->
+                @if (loadingSelection() || loadingRows()) {
                   <app-loading-indicator></app-loading-indicator>
-                } @else if (totalCount() === 0) {
-                  <!-- 3) No rows for selected table/view → message outside of the table -->
-                  <div style="height: 100%; display: grid; place-items: center; text-align: center; padding: 1rem">
-                    <div>
-                      <i class="pi pi-info-circle" style="font-size: 1.35rem; opacity: .7"></i>
-                      <div style="margin-top: .5rem; opacity: .8">
-                        Keine Daten vorhanden.
-                      </div>
-                    </div>
-                  </div>
                 } @else {
-                  <!-- 4) We have data → render the table (no emptymessage inside) -->
+
+                  <!-- Data finished loading → always render the table.
+                       Headers come from columnNames(); emptymessage handles 0 rows. -->
                   <p-table
                     [value]="rows()"
                     size="small"
@@ -210,7 +200,7 @@
                     <ng-template pTemplate="colgroup">
                       <colgroup>
                         @for (col of columnNames(); track col) {
-                          <col [style.width]="getColWidth(col) || null"/>
+                          <col [style.width]="getColWidth(col) || null" />
                         }
                       </colgroup>
                     </ng-template>
@@ -238,6 +228,17 @@
                             {{ row[col] }}
                           </td>
                         }
+                      </tr>
+                    </ng-template>
+
+                    <!-- No rows → keep headers visible and show message inside the table -->
+                    <ng-template pTemplate="emptymessage">
+                      <tr>
+                        <td [attr.colspan]="columnNames().length || 1">
+                          <div style="padding: 0.75rem">
+                            Keine Daten vorhanden.
+                          </div>
+                        </td>
                       </tr>
                     </ng-template>
                   </p-table>
