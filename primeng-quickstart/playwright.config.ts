@@ -12,7 +12,7 @@ export default defineConfig({
 
   // Only forbid .only when running headless (typically in CI or scripted mode)
   forbidOnly: isHeadless,
-  retries: isHeadless ? 2 : 0,
+  retries: 0,
 
   // Show progress in the terminal; also generate HTML report without opening it
   reporter: [
