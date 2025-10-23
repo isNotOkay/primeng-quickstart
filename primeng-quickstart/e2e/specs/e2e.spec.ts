@@ -455,6 +455,107 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       await expect(page.getByText(cfg.neutralDeleteMessage)).toBeVisible({timeout: UI_TIMEOUT});
     });
 
+// Add this inside registerCommonTestsForEngine(cfg)
+    test(`${cfg.label}: pagination + sorting on preloaded 100-row table (E2E_SortPaginated)`, async ({
+                                                                                                       page,
+                                                                                                       request,
+                                                                                                       baseURL
+                                                                                                     }) => {
+      await putEngine(request, cfg.key);
+
+      const name = 'E2E_SortPaginated'; // preloaded table/sheet with 100 rows
+      const pathBase = `/api/web-viewer/tables/${encodeURIComponent(name)}`;
+
+      // Helper: wait for a table fetch matching optional query predicate
+      const waitForTableReq = (predicate?: (url: string) => boolean) =>
+        page.waitForResponse((res) => {
+          const url = res.url();
+          if (!url.includes(pathBase)) return false;
+          return predicate ? predicate(url) : true;
+        }, {timeout: UI_TIMEOUT});
+
+      // Helper: robust paginator selectors (PrimeNG)
+      const paginator = {
+        next: page.locator('.p-paginator .p-paginator-next'),
+        first: page.locator('.p-paginator .p-paginator-first'),
+        last: page.locator('.p-paginator .p-paginator-last'),
+      };
+
+      await goHome(page, baseURL);
+      await selectEngine(page, cfg.label);
+
+      // Open the preloaded 100-row table
+      await waitForListItemVisible(page, name).then((i) => i.click());
+      await expectHeaderVisible(page, 'Id');
+      await expectHeaderVisible(page, 'Name');
+      await expectHeaderVisible(page, 'CreatedAt');
+
+      // Sort by Id ASC to make pagination deterministic
+      const idHeader = (await page.getByRole('columnheader', {name: 'Id', exact: true}).count()) > 0
+        ? page.getByRole('columnheader', {name: 'Id', exact: true})
+        : page.locator('p-table thead th').filter({hasText: 'Id'});
+
+      const waitAsc = waitForTableReq((u) => u.includes('sortBy=Id') && u.includes('sortDir=asc'));
+      await idHeader.click();
+      const respAsc = await waitAsc;
+      expect(respAsc.ok()).toBeTruthy();
+
+      // Determine page size from current page
+      const rows = page.locator('p-table table tbody tr');
+      await expect(rows.first()).toBeVisible({timeout: UI_TIMEOUT});
+      const pageSize = await rows.count();
+      expect(pageSize).toBeGreaterThan(0);
+
+      // Read first row's Id on page 1
+      const firstCell = rows.first().locator('td').first();
+      const readFirstId = async () => parseInt((await firstCell.innerText()).replace(/\D+/g, ''), 10);
+      const idPage1 = await readFirstId();
+      expect(idPage1).toBe(1); // with Id ASC, first page should start at 1
+
+      // Go to NEXT page and verify the first Id increases by pageSize
+      await expect(paginator.next).toBeVisible({timeout: UI_TIMEOUT});
+      const waitNext = waitForTableReq((u) =>
+        u.includes('page=') || u.includes('pageIndex=') || u.includes('skip=') || u.includes('offset=')
+      );
+      await paginator.next.click();
+      const respNext = await waitNext;
+      expect(respNext.ok()).toBeTruthy();
+
+      await expect.poll(readFirstId, {timeout: UI_TIMEOUT}).toBe(idPage1 + pageSize);
+
+      // Jump to LAST page and ensure 100 is present in the first column
+      await expect(paginator.last).toBeVisible({timeout: UI_TIMEOUT});
+      const waitLast = waitForTableReq((u) =>
+        u.includes('page=') || u.includes('pageIndex=') || u.includes('skip=') || u.includes('offset=')
+      );
+      await paginator.last.click();
+      const respLast = await waitLast;
+      expect(respLast.ok()).toBeTruthy();
+
+      const firstColCells = page.locator('p-table table tbody tr td:first-child');
+      const firstColTexts = (await firstColCells.allInnerTexts()).map((t) => t.trim());
+      const firstColIds = firstColTexts.map((t) => parseInt(t.replace(/\D+/g, ''), 10)).filter((n) => !Number.isNaN(n));
+      expect(firstColIds.some((n) => n === 100)).toBeTruthy();
+
+      // Now toggle DESC and go to FIRST page → the very first row should be 100
+      const waitDesc = waitForTableReq((u) => u.includes('sortBy=Id') && u.includes('sortDir=desc'));
+      await idHeader.click();
+      const respDesc = await waitDesc;
+      expect(respDesc.ok()).toBeTruthy();
+
+      // Ensure we're on the first page after sorting DESC
+      await expect(paginator.first).toBeVisible({timeout: UI_TIMEOUT});
+      const waitFirst = waitForTableReq((u) =>
+        u.includes('page=') || u.includes('pageIndex=') || u.includes('skip=') || u.includes('offset=')
+      );
+      await paginator.first.click();
+      const respFirst = await waitFirst;
+      expect(respFirst.ok()).toBeTruthy();
+
+      await expect.poll(readFirstId, {timeout: UI_TIMEOUT}).toBe(100);
+    });
+
+
     // ───────────────────────────────────────────────────────────────
     // View-related tests — only for SQLite
     // ───────────────────────────────────────────────────────────────

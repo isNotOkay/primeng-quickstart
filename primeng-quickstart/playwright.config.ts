@@ -1,33 +1,40 @@
-// file: playwright.config.ts
+// playwright.config.ts
 import { defineConfig, devices } from '@playwright/test';
 
-const isCI = !!process.env["CI"];
+// HEADLESS=1 (or "true"/"yes") -> run headless
+const isHeadless =
+  ['1', 'true', 'yes'].includes(String(process.env["HEADLESS"] ?? '').toLowerCase());
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   workers: 1,
-  forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
-  reporter: 'html',
+
+  // Only forbid .only when running headless (typically in CI or scripted mode)
+  forbidOnly: isHeadless,
+  retries: isHeadless ? 2 : 0,
+
+  // Show progress in the terminal; also generate HTML report without opening it
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+  ],
 
   use: {
     baseURL: process.env['PLAYWRIGHT_TEST_BASE_URL'] ?? 'http://localhost:4200',
     trace: 'on-first-retry',
-    headless: isCI, // headless in CI, headed locally
+    headless: isHeadless, // headless when HEADLESS=1; headed otherwise
   },
 
   globalTeardown: './e2e/global-teardown.ts',
 
-  // webServer: { ... } // keep commented if you start the app yourself
-
   projects: [
     {
-      // Use Playwright's bundled Chromium on CI; real Chrome locally.
-      name: isCI ? 'chromium' : 'chrome',
+      // Use bundled Chromium when headless; real Chrome when headed.
+      name: isHeadless ? 'chromium' : 'chrome',
       use: {
         ...devices['Desktop Chrome'],
-        ...(isCI ? {} : { channel: 'chrome' }),
+        ...(isHeadless ? {} : { channel: 'chrome' }),
       },
     },
   ],
