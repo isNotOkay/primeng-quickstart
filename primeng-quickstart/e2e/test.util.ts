@@ -207,3 +207,94 @@ export async function createTableAndSelect(
   await item.click();
   return item;
 }
+
+/** Helper for tracking HTTP requests matching a specific pattern */
+export interface RequestTracker {
+  started: number;
+  finished: number;
+  failed: number;
+  start: () => void;
+  stop: () => void;
+}
+
+export function createRequestTracker(page: Page, urlMatcher: (url: string) => boolean): RequestTracker {
+  const tracker = {
+    started: 0,
+    finished: 0,
+    failed: 0,
+    start() {},
+    stop() {},
+  };
+
+  const onReq = (req: any) => {
+    if (urlMatcher(req.url())) tracker.started++;
+  };
+  const onFinished = (req: any) => {
+    if (urlMatcher(req.url())) tracker.finished++;
+  };
+  const onFailed = (req: any) => {
+    if (urlMatcher(req.url())) tracker.failed++;
+  };
+
+  tracker.start = () => {
+    page.on('request', onReq);
+    page.on('requestfinished', onFinished);
+    page.on('requestfailed', onFailed);
+  };
+
+  tracker.stop = () => {
+    page.off('request', onReq);
+    page.off('requestfinished', onFinished);
+    page.off('requestfailed', onFailed);
+  };
+
+  return tracker;
+}
+
+/** Parse numeric value from table cell text (handles various number formats) */
+export function parseNumericCellValue(raw: string): number {
+  // Keep digits, sign, dot, comma
+  let s = raw.replace(/[^0-9+\-.,]/g, '');
+  // Last separator is the decimal; remove others
+  const i = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  if (i !== -1) {
+    s = s.slice(0, i).replace(/[.,]/g, '') + '.' + s.slice(i + 1).replace(/[.,]/g, '');
+  }
+  return Number(s);
+}
+
+/** Wait for PrimeNG table to show data (not loading, not empty message) */
+export async function waitForTableData(page: Page) {
+  const table = page.locator('p-table');
+  await expect(table.locator('.p-datatable-loading')).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(table.locator('tbody tr.p-datatable-emptymessage')).toHaveCount(0, { timeout: UI_TIMEOUT });
+}
+
+/** Get a column header locator by name (tries multiple strategies) */
+export async function getHeaderLocator(page: Page, columnName: string): Promise<Locator> {
+  const byRole = page.getByRole('columnheader', { name: columnName, exact: true });
+  if ((await byRole.count()) > 0) return byRole;
+
+  const inScrollable = page
+    .locator('.p-table-scrollable-header .p-table-scrollable-header-table thead th')
+    .filter({ hasText: columnName })
+    .first();
+  if ((await inScrollable.count()) > 0) return inScrollable;
+
+  return page.locator('p-table thead th').filter({ hasText: columnName }).first();
+}
+
+/** Paginator helpers for PrimeNG table */
+export function getPaginatorControls(page: Page) {
+  return {
+    next: page.locator('.p-paginator .p-paginator-next'),
+    first: page.locator('.p-paginator .p-paginator-first'),
+    last: page.locator('.p-paginator .p-paginator-last'),
+    current: page.locator('.p-paginator-current'),
+  };
+}
+
+export async function isPaginatorDisabled(locator: Locator): Promise<boolean> {
+  const cls = await locator.getAttribute('class');
+  return cls?.includes('p-disabled') || (await locator.isDisabled());
+}

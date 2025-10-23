@@ -4,17 +4,23 @@ import {
   API_BASE,
   clickToolbarDelete,
   confirmPrimeDelete,
+  createRequestTracker,
   createTable,
   dsl,
   expectGroupHeaderHidden,
   expectGroupHeaderVisible,
   expectHeaderVisible,
+  getHeaderLocator,
+  getPaginatorControls,
   goHome,
+  isPaginatorDisabled,
+  parseNumericCellValue,
   putEngine,
   selectEngine,
   UI_TIMEOUT,
   waitForListItemHidden,
   waitForListItemVisible,
+  waitForTableData,
 } from '../test.util';
 
 test.describe.configure({mode: 'serial'}); // run everything in this file sequentially
@@ -197,34 +203,19 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       await selectEngine(page, cfg.label);
 
       const pathPrefix = `/api/web-viewer/tables/${encodeURIComponent(name)}`;
-      let started = 0, finished = 0, failed = 0;
-
-      const onReq = (req: any) => {
-        if (req.url().includes(pathPrefix)) started++;
-      };
-      const onFinished = (req: any) => {
-        if (req.url().includes(pathPrefix)) finished++;
-      };
-      const onFailed = (req: any) => {
-        if (req.url().includes(pathPrefix)) failed++;
-      };
-
-      page.on('request', onReq);
-      page.on('requestfinished', onFinished);
-      page.on('requestfailed', onFailed);
+      const tracker = createRequestTracker(page, (url) => url.includes(pathPrefix));
+      tracker.start();
 
       await waitForListItemVisible(page, name).then((i) => i.click());
       await expectHeaderVisible(page, 'Id');
       await expectHeaderVisible(page, 'Name');
 
       await page.waitForTimeout(2000);
-      expect(started).toBe(1);
-      expect(finished).toBe(1);
-      expect(failed).toBe(0);
+      expect(tracker.started).toBe(1);
+      expect(tracker.finished).toBe(1);
+      expect(tracker.failed).toBe(0);
 
-      page.off('request', onReq);
-      page.off('requestfinished', onFinished);
-      page.off('requestfailed', onFailed);
+      tracker.stop();
     });
 
     // ───────────────────────────────────────────────────────────────
@@ -251,41 +242,22 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       const pathBase = `/api/web-viewer/tables/${encodeURIComponent(name)}`;
 
       async function expectSingleSortRequest(dir: 'asc' | 'desc') {
-        let started = 0, finished = 0, failed = 0;
         const match = (url: string) => url.includes(pathBase) && url.includes('sortBy=Name') && url.includes(`sortDir=${dir}`);
+        const tracker = createRequestTracker(page, match);
+        tracker.start();
 
-        const onReq = (req: any) => {
-          if (match(req.url())) started++;
-        };
-        const onFinished = (req: any) => {
-          if (match(req.url())) finished++;
-        };
-        const onFailed = (req: any) => {
-          if (match(req.url())) failed++;
-        };
-
-        page.on('request', onReq);
-        page.on('requestfinished', onFinished);
-        page.on('requestfailed', onFailed);
-
-        let header = page.getByRole('columnheader', {name: 'Name', exact: true});
-        if ((await header.count()) === 0) {
-          header = page.locator('p-table thead th').filter({hasText: 'Name'});
-        }
-
+        const header = await getHeaderLocator(page, 'Name');
         const waitResp = page.waitForResponse((res) => match(res.url()), {timeout: UI_TIMEOUT});
         await header.click();
         const resp = await waitResp;
         expect(resp.ok()).toBeTruthy();
 
         await page.waitForTimeout(300);
-        expect(started).toBe(1);
-        expect(finished).toBe(1);
-        expect(failed).toBe(0);
+        expect(tracker.started).toBe(1);
+        expect(tracker.finished).toBe(1);
+        expect(tracker.failed).toBe(0);
 
-        page.off('request', onReq);
-        page.off('requestfinished', onFinished);
-        page.off('requestfailed', onFailed);
+        tracker.stop();
       }
 
       await expectSingleSortRequest('asc');
@@ -315,27 +287,14 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       await expectHeaderVisible(page, 'Name');
 
       // ---- Helpers (scoped to this test) ----
-      const headerLocator = async (col: string) => {
-        let th = page
-          .locator('.p-table-scrollable-header .p-table-scrollable-header-table thead th')
-          .filter({hasText: col})
-          .first();
-        if ((await th.count()) > 0) return th;
-
-        const byRole = page.getByRole('columnheader', {name: col, exact: true});
-        if ((await byRole.count()) > 0) return byRole.first();
-
-        return page.locator('p-table thead th').filter({hasText: col}).first();
-      };
-
       const getHeaderWidth = async (col: string) => {
-        const th = await headerLocator(col);
+        const th = await getHeaderLocator(page, col);
         await expect(th).toBeVisible({timeout: UI_TIMEOUT});
         return th.evaluate((el) => Math.round((el as HTMLElement).getBoundingClientRect().width));
       };
 
       const resizeAndAssertGain = async (col: string, deltaX: number, minGain: number) => {
-        const th = await headerLocator(col);
+        const th = await getHeaderLocator(page, col);
         const before = await getHeaderWidth(col);
 
         // Try handle first; fall back to dragging from header edge.
@@ -522,14 +481,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
           return predicate ? predicate(url) : true;
         }, {timeout: UI_TIMEOUT});
 
-      const paginator = {
-        next: page.locator('.p-paginator .p-paginator-next'),
-        first: page.locator('.p-paginator .p-paginator-first'),
-        last: page.locator('.p-paginator .p-paginator-last'),
-        current: page.locator('.p-paginator-current'),
-      };
-      const isDisabled = async (loc: Locator) =>
-        (await loc.getAttribute('class'))?.includes('p-disabled') || await loc.isDisabled();
+      const paginator = getPaginatorControls(page);
       const waitForPageChange = () =>
         waitForTableReq(u => u.includes('page=') || u.includes('pageIndex=') || u.includes('skip=') || u.includes('offset='));
 
@@ -564,7 +516,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       const idPage1 = await readFirstId();
 
       // Go to NEXT page (if possible) and verify increment
-      if (!(await isDisabled(paginator.next))) {
+      if (!(await isPaginatorDisabled(paginator.next))) {
         const waitNext = waitForPageChange();
         await paginator.next.click();
         const respNext = await waitNext;
@@ -573,7 +525,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       }
 
       // Jump to LAST page (only if enabled)
-      if (!(await isDisabled(paginator.last))) {
+      if (!(await isPaginatorDisabled(paginator.last))) {
         const waitLast = waitForPageChange();
         await paginator.last.click();
         const respLast = await waitLast;
@@ -590,7 +542,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       const respDesc = await waitDesc;
       expect(respDesc.ok()).toBeTruthy();
 
-      if (!(await isDisabled(paginator.first))) {
+      if (!(await isPaginatorDisabled(paginator.first))) {
         const waitFirst = waitForPageChange();
         await paginator.first.click();
         const respFirst = await waitFirst;
@@ -737,27 +689,17 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     await item.click();
     await expectHeaderVisible(page, 'GrandTotal');
 
-    const table = page.locator('p-table'); // root of PrimeNG table
-
-    // --- wait until the table actually has data ---
-    // hide spinner if present
-    await expect(table.locator('.p-datatable-loading')).toBeHidden({timeout: UI_TIMEOUT});
-    // ensure the empty message row ("Keine Daten vorhanden.") is gone
-    await expect(table.locator('tbody tr.p-datatable-emptymessage')).toHaveCount(0, {timeout: UI_TIMEOUT});
+    await waitForTableData(page);
 
     // first cell of a real data row
+    const table = page.locator('p-table');
     const cell = table.locator('tbody tr:not(.p-datatable-emptymessage) td').first();
     await expect(cell).toBeVisible({timeout: UI_TIMEOUT});
     await expect(cell).toHaveText(/\d/, {timeout: UI_TIMEOUT}); // there is at least one digit
 
     // --- parse robustly (handles , or . as decimal and thousands separators) ---
     const raw = (await cell.textContent())?.trim() ?? '';
-    // keep digits, sign, dot, comma
-    let s = raw.replace(/[^0-9+\-.,]/g, '');
-    // last separator is the decimal; remove others
-    const i = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
-    if (i !== -1) s = s.slice(0, i).replace(/[.,]/g, '') + '.' + s.slice(i + 1).replace(/[.,]/g, '');
-    const v = Number(s);
+    const v = parseNumericCellValue(raw);
 
     console.log('raw:', JSON.stringify(raw), 'parsed:', v);
 
@@ -807,8 +749,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     const table = page.locator('p-table'); // PrimeNG table root
 
     // Wait until the table actually has data (not the "Keine Daten vorhanden." row)
-    await expect(table.locator('.p-datatable-loading')).toBeHidden({timeout: UI_TIMEOUT});
-    await expect(table.locator('tbody tr.p-datatable-emptymessage')).toHaveCount(0, {timeout: UI_TIMEOUT});
+    await waitForTableData(page);
 
     const rows = table.locator('tbody tr:not(.p-datatable-emptymessage)');
     await expect(rows.first()).toBeVisible({timeout: UI_TIMEOUT});
@@ -822,6 +763,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       cells
         .map((el) => (el.textContent || '').trim())
         .map((raw) => {
+          // Parse numeric value (inline to work in browser context)
           let s = raw.replace(/[^0-9+\-.,]/g, '');
           const i = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
           if (i !== -1) s = s.slice(0, i).replace(/[.,]/g, '') + '.' + s.slice(i + 1).replace(/[.,]/g, '');
