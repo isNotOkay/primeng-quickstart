@@ -1,17 +1,18 @@
-import {APIRequestContext, expect, Locator, Page} from '@playwright/test';
+// e2e/test.util.ts
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 
 export const API_BASE = process.env['API_BASE'] ?? 'http://localhost:4713';
 export const UI_TIMEOUT = 10_000;
 
 // Helpers extracted from e2e.spec.ts
 export async function dsl(request: APIRequestContext, body: unknown) {
-  const res = await request.post(`${API_BASE}/api/tool-server/sql/query`, {data: body});
+  const res = await request.post(`${API_BASE}/api/tool-server/sql/query`, { data: body });
   const txt = await res.text();
   expect(res.ok(), txt).toBeTruthy();
 }
 
 export async function putEngine(request: APIRequestContext, engine: 'sqlite' | 'excel') {
-  const res = await request.put(`${API_BASE}/api/web-viewer/settings/engine`, {data: {engine}});
+  const res = await request.put(`${API_BASE}/api/web-viewer/settings/engine`, { data: { engine } });
   const txt = await res.text();
   expect(res.ok(), txt).toBeTruthy();
   const body = JSON.parse(txt);
@@ -21,12 +22,15 @@ export async function putEngine(request: APIRequestContext, engine: 'sqlite' | '
 /** Clicks the confirm 'Löschen' button in the PrimeNG ConfirmDialog */
 export async function confirmPrimeDelete(page: Page) {
   // Find the visible PrimeNG dialog by its container rather than ARIA name
-  const dlg = page.locator('.p-dialog:visible').filter({
-    has: page.getByRole('button', {name: 'Abbrechen'}),
-  }).last();
+  const dlg = page
+    .locator('.p-dialog:visible')
+    .filter({
+      has: page.getByRole('button', { name: 'Abbrechen' }),
+    })
+    .last();
 
-  await expect(dlg).toBeVisible({timeout: UI_TIMEOUT});
-  await dlg.getByRole('button', {name: 'Löschen', exact: true}).click();
+  await expect(dlg).toBeVisible({ timeout: UI_TIMEOUT });
+  await dlg.getByRole('button', { name: 'Löschen', exact: true }).click();
 }
 
 export async function clickToolbarDelete(page: Page) {
@@ -46,14 +50,14 @@ export async function clickToolbarDelete(page: Page) {
 /** Wait until PrimeNG listbox shows at least one group and one item/placeholder */
 export async function waitForListsReady(page: Page) {
   const listbox = page.locator('.left-listbox');
-  await expect(listbox).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(listbox).toBeVisible({ timeout: UI_TIMEOUT });
 
   // At least one group header (PrimeNG uses li.p-listbox-option-group)
-  await expect(listbox.locator('li.p-listbox-option-group').first()).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(listbox.locator('li.p-listbox-option-group').first()).toBeVisible({ timeout: UI_TIMEOUT });
 
   // At least one option (or placeholder)
   const anyItem = listbox.locator('li.p-listbox-option').first();
-  await expect(anyItem).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(anyItem).toBeVisible({ timeout: UI_TIMEOUT });
 }
 
 /** Navigate home and wait until the left listbox is ready */
@@ -74,7 +78,7 @@ export async function openSelectOverlay(selectRoot: Locator) {
   for (const cand of candidates) {
     if ((await cand.count()) > 0) {
       try {
-        await cand.first().click({timeout: 1500});
+        await cand.first().click({ timeout: 1500 });
         return;
       } catch {
         // try next
@@ -87,19 +91,17 @@ export async function openSelectOverlay(selectRoot: Locator) {
     const combo = selectRoot.getByRole('combobox').first();
     await combo.focus();
     try {
-      await combo.press('Enter', {timeout: 1000});
+      await combo.press('Enter', { timeout: 1000 });
       return;
-    } catch {
-    }
+    } catch {}
     try {
-      await combo.press('Space', {timeout: 1000});
+      await combo.press('Space', { timeout: 1000 });
       return;
-    } catch {
-    }
+    } catch {}
   }
 
   // Last resort: click near the top-left of the component
-  await selectRoot.click({position: {x: 5, y: 5}, timeout: 1500});
+  await selectRoot.click({ position: { x: 5, y: 5 }, timeout: 1500 });
 }
 
 /** Read the visible label text of the Select */
@@ -121,18 +123,18 @@ export async function readSelectLabel(page: Page): Promise<string> {
 /** Picks engine via PrimeNG <p-select inputId="dataSource"> */
 export async function selectEngine(page: Page, engine: 'SQLite' | 'Excel') {
   const selectRoot = page.locator('p-select[inputid="dataSource"]');
-  await expect(selectRoot).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(selectRoot).toBeVisible({ timeout: UI_TIMEOUT });
 
   await openSelectOverlay(selectRoot);
 
   const panel = page.locator('.p-select-panel, .p-dropdown-panel, .p-overlay, .p-select-items');
-  await expect(panel.first()).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(panel.first()).toBeVisible({ timeout: UI_TIMEOUT });
 
-  const optionByRole = page.getByRole('option', {name: engine, exact: true});
+  const optionByRole = page.getByRole('option', { name: engine, exact: true });
   if ((await optionByRole.count()) > 0) {
-    await optionByRole.first().click({timeout: UI_TIMEOUT});
+    await optionByRole.first().click({ timeout: UI_TIMEOUT });
   } else {
-    await panel.getByText(engine, {exact: true}).first().click({timeout: UI_TIMEOUT});
+    await panel.getByText(engine, { exact: true }).first().click({ timeout: UI_TIMEOUT });
   }
 
   await expect
@@ -145,44 +147,43 @@ export async function selectEngine(page: Page, engine: 'SQLite' | 'Excel') {
   await waitForListsReady(page);
 }
 
-
 // Works whether PrimeNG adds ARIA roles or not
 export async function expectHeaderVisible(page: Page, name: string) {
-  const byRole = page.getByRole('columnheader', {name, exact: true});
+  const byRole = page.getByRole('columnheader', { name, exact: true });
   if ((await byRole.count()) > 0) {
-    await expect(byRole).toBeVisible({timeout: UI_TIMEOUT});
+    await expect(byRole).toBeVisible({ timeout: UI_TIMEOUT });
   } else {
-    await expect(page.locator(`p-table thead th:has-text("${name}")`)).toBeVisible({timeout: UI_TIMEOUT});
+    await expect(page.locator(`p-table thead th:has-text("${name}")`)).toBeVisible({ timeout: UI_TIMEOUT });
   }
 }
 
 /** Wait until a specific list item appears (SignalR-driven for both engines) */
 export async function waitForListItemVisible(page: Page, text: string): Promise<Locator> {
-  const item = page.locator('.left-listbox').getByText(text, {exact: true});
-  await expect(item).toBeVisible({timeout: UI_TIMEOUT});
+  const item = page.locator('.left-listbox').getByText(text, { exact: true });
+  await expect(item).toBeVisible({ timeout: UI_TIMEOUT });
   return item;
 }
 
 /** Wait until a specific list item disappears (SignalR-driven for both engines) */
 export async function waitForListItemHidden(page: Page, text: string): Promise<void> {
-  const item = page.locator('.left-listbox').getByText(text, {exact: true});
-  await expect(item).toBeHidden({timeout: UI_TIMEOUT});
+  const item = page.locator('.left-listbox').getByText(text, { exact: true });
+  await expect(item).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
 /** Helpers for group headers in the left listbox */
 export function groupHeader(page: Page, name: string) {
-  return page.locator('.left-listbox li.p-listbox-option-group').filter({hasText: name});
+  return page.locator('.left-listbox li.p-listbox-option-group').filter({ hasText: name });
 }
 
 export async function expectGroupHeaderVisible(page: Page, name: string) {
   const g = groupHeader(page, name);
-  await expect(g).toHaveCount(1, {timeout: UI_TIMEOUT});
-  await expect(g.first()).toBeVisible({timeout: UI_TIMEOUT});
+  await expect(g).toHaveCount(1, { timeout: UI_TIMEOUT });
+  await expect(g.first()).toBeVisible({ timeout: UI_TIMEOUT });
 }
 
 export async function expectGroupHeaderHidden(page: Page, name: string) {
   const g = groupHeader(page, name);
-  await expect(g).toHaveCount(0, {timeout: UI_TIMEOUT});
+  await expect(g).toHaveCount(0, { timeout: UI_TIMEOUT });
 }
 
 /**
@@ -192,8 +193,8 @@ export async function expectGroupHeaderHidden(page: Page, name: string) {
 export async function createTable(request: APIRequestContext, name: string, schema: unknown[]) {
   await dsl(request, {
     operation: 'Create',
-    target: {name},
-    create: {kind: 'Table', schema},
+    target: { name },
+    create: { kind: 'Table', schema },
   });
 }
 
@@ -201,7 +202,7 @@ export async function createTable(request: APIRequestContext, name: string, sche
  * Drop a table/view/sheet by name via the DSL.
  */
 export async function dropObject(request: APIRequestContext, name: string) {
-  await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+  await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
 }
 
 /**

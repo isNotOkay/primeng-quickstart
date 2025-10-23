@@ -1,65 +1,32 @@
-// e2e/e2e.spec.ts
-import { expect, test } from '@playwright/test';
+// e2e/ui.spec.ts
+import {expect, test} from '@playwright/test';
 import {
   API_BASE,
-  UI_TIMEOUT,
-  dsl,
+  clickToolbarDelete,
+  confirmPrimeDelete,
   createTable,
   dropObject,
-  putEngine,
-  confirmPrimeDelete,
-  clickToolbarDelete,
-  waitForListsReady,
+  dsl,
+  expectGroupHeaderHidden,
+  expectGroupHeaderVisible,
+  expectHeaderVisible,
   goHome,
   openSelectOverlay,
+  putEngine,
   readSelectLabel,
   selectEngine,
-  expectHeaderVisible,
-  waitForListItemVisible,
+  UI_TIMEOUT,
   waitForListItemHidden,
-  expectGroupHeaderVisible,
-  expectGroupHeaderHidden,
-} from './test.util';
+  waitForListItemVisible,
+  waitForListsReady,
+} from '../test.util';
 
 test.describe.configure({mode: 'serial'});
 
 // ───────────────────────────────────────────────────────────────
-// API-only: tables & columns (no UI interaction)
+// Settings / Engine dropdown persistence (UI-centric)
 // ───────────────────────────────────────────────────────────────
-test.describe('Tool Server API — tables & columns (no UI)', () => {
-  test.describe.configure({mode: 'serial'});
-
-  test('sqlite: GET /tables and POST /columns return data', async ({request}) => {
-    await putEngine(request, 'sqlite');
-
-    const tableName = 'E2E_API_SQLITE_1';
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
-
-    const tablesRes = await request.get(`${API_BASE}/api/tool-server/sql/tables`);
-    expect(tablesRes.ok(), await tablesRes.text()).toBeTruthy();
-    const tables = await tablesRes.json();
-    expect(Array.isArray(tables)).toBeTruthy();
-    expect(tables).toContain(tableName);
-
-    const colsRes = await request.post(`${API_BASE}/api/tool-server/sql/columns`, {data: {tableName}});
-    expect(colsRes.ok(), await colsRes.text()).toBeTruthy();
-    const columns = await colsRes.json();
-    expect(Array.isArray(columns)).toBeTruthy();
-    expect(columns).toEqual(expect.arrayContaining(['Id', 'Name']));
-
-    await dropObject(request, tableName);
-  });
-
+test.describe('Settings — engine dropdown persistence', () => {
   test('engine dropdown reflects persisted setting on load and after change', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
@@ -79,37 +46,6 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
     const res = await request.get(`${API_BASE}/api/web-viewer/settings/engine`);
     const body = await res.json();
     expect((body?.engine ?? '').toLowerCase()).toBe('excel');
-  });
-
-  test('excel: GET /tables and POST /columns return data', async ({request}) => {
-    await putEngine(request, 'excel');
-
-    const sheetName = 'E2E_API_XL_1';
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER'},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
-
-    const tablesRes = await request.get(`${API_BASE}/api/tool-server/sql/tables`);
-    expect(tablesRes.ok(), await tablesRes.text()).toBeTruthy();
-    const tables = await tablesRes.json();
-    expect(Array.isArray(tables)).toBeTruthy();
-    expect(tables).toContain(sheetName);
-
-    const colsRes = await request.post(`${API_BASE}/api/tool-server/sql/columns`, {data: {tableName: sheetName}});
-    expect(colsRes.ok(), await colsRes.text()).toBeTruthy();
-    const columns = await colsRes.json();
-    expect(Array.isArray(columns)).toBeTruthy();
-    expect(columns).toEqual(expect.arrayContaining(['Id', 'Name']));
-
-    await dropObject(request, sheetName);
   });
 });
 
@@ -176,7 +112,11 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await waitForListItemVisible(page, tableName).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
-    await dsl(request, {operation: 'Alter', target: {name: tableName}, alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}});
+    await dsl(request, {
+      operation: 'Alter',
+      target: {name: tableName},
+      alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}
+    });
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -360,7 +300,11 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
-    await dsl(request, {operation: 'Alter', target: {name: sheetName}, alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}});
+    await dsl(request, {
+      operation: 'Alter',
+      target: {name: sheetName},
+      alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}
+    });
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -384,11 +328,10 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await selectEngine(page, 'Excel');
 
     await dsl(request, {
-        operation: 'Alter',
-        target: {name: sheetName},
-        alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]}
-      },
-    );
+      operation: 'Alter',
+      target: {name: sheetName},
+      alter: {actions: [{renameColumn: {from: 'OldCol', to: 'NewCol'}}]},
+    });
 
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'NewCol');
@@ -447,14 +390,14 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
 });
 
 // ───────────────────────────────────────────────────────────────
-// Visibility of "Sichten" group (regression tests)
+// Visibility of "Sichten" group (regression tests) & more UI
 // ───────────────────────────────────────────────────────────────
 test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test.describe.configure({mode: 'serial'});
 
   test('initial load with persisted Excel hides "Sichten"', async ({page, request, baseURL}) => {
-    await putEngine(request, 'excel');       // Persist Excel BEFORE visiting the app
-    await goHome(page, baseURL);             // Initial load
+    await putEngine(request, 'excel'); // Persist Excel BEFORE visiting the app
+    await goHome(page, baseURL); // Initial load
 
     // Ensure "Sichten" group header does not exist
     await expectGroupHeaderHidden(page, 'SICHTEN');
@@ -463,7 +406,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   });
 
   test('switching engines toggles "Sichten" visibility', async ({page, request, baseURL}) => {
-    await putEngine(request, 'sqlite');      // Start from SQLite
+    await putEngine(request, 'sqlite'); // Start from SQLite
     await goHome(page, baseURL);
 
     // On SQLite we expect the group to exist
@@ -580,10 +523,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Click "Name" header and expect a request with the given sortDir
     async function clickHeaderAndExpect(dir: 'asc' | 'desc') {
       const wait = page.waitForResponse(
-        (res) =>
-          res.url().includes(pathBase) &&
-          res.url().includes('sortBy=Name') &&
-          res.url().includes(`sortDir=${dir}`),
+        (res) => res.url().includes(pathBase) && res.url().includes('sortBy=Name') && res.url().includes(`sortDir=${dir}`),
         {timeout: UI_TIMEOUT}
       );
 
@@ -605,7 +545,6 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   });
 
   // Add this test near your other sorting tests (e.g., in the "Left listbox groups — ..." describe)
-
   test('sorting issues a single request per click (no duplicates)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
@@ -629,8 +568,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       let finished = 0;
       let failed = 0;
 
-      const match = (url: string) =>
-        url.includes(pathBase) && url.includes('sortBy=Name') && url.includes(`sortDir=${dir}`);
+      const match = (url: string) => url.includes(pathBase) && url.includes('sortBy=Name') && url.includes(`sortDir=${dir}`);
 
       const onReq = (req: any) => {
         if (match(req.url())) started++;
@@ -676,7 +614,6 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     await dropObject(request, tableName);
   });
-
 
   test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
@@ -734,9 +671,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     const wNameBefore = await getHeaderWidth('Name');
     await dragResizer('Name', 100);
 
-    await expect
-      .poll(async () => await getHeaderWidth('Name'), {timeout: UI_TIMEOUT})
-      .toBeGreaterThan(wNameBefore + 30);
+    await expect.poll(async () => await getHeaderWidth('Name'), {timeout: UI_TIMEOUT}).toBeGreaterThan(wNameBefore + 30);
 
     const wNameAfter = await getHeaderWidth('Name');
 
@@ -773,9 +708,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Resize new column and ensure width increases and is cached
     await dragResizer(newCol, 120);
-    await expect
-      .poll(async () => await getHeaderWidth(newCol), {timeout: UI_TIMEOUT})
-      .toBeGreaterThan(wNewDefault + 40);
+    await expect.poll(async () => await getHeaderWidth(newCol), {timeout: UI_TIMEOUT}).toBeGreaterThan(wNewDefault + 40);
     const wNewAfter = await getHeaderWidth(newCol);
 
     // Switch away and back → both "Name" and the *new* column should keep widths
@@ -798,7 +731,6 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       await dropObject(request, name);
     }
   });
-
 
   test('clearable search: X button appears, clears input, and keeps focus', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
@@ -851,10 +783,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectHeaderVisible(page, 'Id');
 
     // And the list option should still carry the "selected" class
-    const li = page
-      .locator('.left-listbox li.p-listbox-option')
-      .filter({hasText: tableName})
-      .first();
+    const li = page.locator('.left-listbox li.p-listbox-option').filter({hasText: tableName}).first();
     await expect(li).toHaveClass(/p-listbox-option-selected/);
 
     // Optional: attempt unselect via keyboard and assert it also sticks
@@ -866,7 +795,6 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Cleanup
     await dropObject(request, tableName);
   });
-
 
   test('SignalR toast de-dupe: exactly one toast for create and one for update', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
@@ -892,9 +820,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Ensure the SignalR event has propagated to the UI
     await waitForListItemVisible(page, tableName);
 
-    const createdToast = page
-      .locator('.p-toast .p-toast-message')
-      .filter({hasText: `"${tableName}" wurde erstellt.`});
+    const createdToast = page.locator('.p-toast .p-toast-message').filter({hasText: `"${tableName}" wurde erstellt.`});
 
     // The single create toast should appear
     await expect(createdToast.first()).toBeVisible({timeout: UI_TIMEOUT});
@@ -909,9 +835,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
     });
 
-    const updatedToast = page
-      .locator('.p-toast .p-toast-message')
-      .filter({hasText: `"${tableName}" wurde aktualisiert.`});
+    const updatedToast = page.locator('.p-toast .p-toast-message').filter({hasText: `"${tableName}" wurde aktualisiert.`});
 
     await expect(updatedToast.first()).toBeVisible({timeout: UI_TIMEOUT});
     await page.waitForTimeout(400);
@@ -943,46 +867,24 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Ensure the item disappeared (SignalR processed)
     await waitForListItemHidden(page, tableName);
 
-    const deletedToast = page
-      .locator('.p-toast .p-toast-message')
-      .filter({hasText: `"${tableName}" wurde gelöscht.`});
+    const deletedToast = page.locator('.p-toast .p-toast-message').filter({hasText: `"${tableName}" wurde gelöscht.`});
 
     await expect(deletedToast.first()).toBeVisible({timeout: UI_TIMEOUT});
     await page.waitForTimeout(400);
     await expect(deletedToast).toHaveCount(1);
   });
 
-  test('download endpoint (SQLite) returns 200 OK', async ({request}) => {
-    await putEngine(request, 'sqlite');
-
-    // (Optional) ensure file exists by touching the DB
-    const tableName = 'E2E_DL_SQL';
-    await createTable(request, tableName, [{name: 'Id', type: 'INTEGER'}]);
-
-    const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Sqlite`);
-    const bodyPreview = await res.text(); // for easier debugging on failure
-    expect(res.ok(), bodyPreview).toBeTruthy();
-  });
-
-  test('download endpoint (Excel) returns 200 OK', async ({request}) => {
-    await putEngine(request, 'excel');
-
-    // Ensure workbook exists by creating a sheet
-    const sheetName = 'E2E_DL_XL';
-    await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER'}]);
-
-    const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Excel`);
-    const bodyPreview = await res.text(); // for easier debugging on failure
-    expect(res.ok(), bodyPreview).toBeTruthy();
-  });
-
-  test('deletes a table via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+  test('deletes a table via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({
+                                                                                                        page,
+                                                                                                        request,
+                                                                                                        baseURL
+                                                                                                      }) => {
     await putEngine(request, 'sqlite');
 
     const tableName = 'E2E_SQL_DeleteTable_UI';
     await createTable(request, tableName, [
-      { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-      { name: 'Name', type: 'TEXT' },
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
     ]);
 
     await goHome(page, baseURL);
@@ -996,10 +898,14 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, tableName);
-    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({timeout: UI_TIMEOUT});
   });
 
-  test('deletes a view via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+  test('deletes a view via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({
+                                                                                                       page,
+                                                                                                       request,
+                                                                                                       baseURL
+                                                                                                     }) => {
     await putEngine(request, 'sqlite');
 
     const viewName = 'E2E_SQL_DeleteView_UI';
@@ -1008,10 +914,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     await dsl(request, {
       operation: 'Select',
-      target: { name: viewName },
+      target: {name: viewName},
       select: {
         from: 'Album',
-        columns: [{ expr: 'AlbumId', as: 'AlbumId' }],
+        columns: [{expr: 'AlbumId', as: 'AlbumId'}],
         limit: 1,
       },
     });
@@ -1023,18 +929,22 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, viewName);
-    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.getByText('Keine Tabelle oder Sicht ausgewählt.')).toBeVisible({timeout: UI_TIMEOUT});
   });
 
-  test('deletes a sheet via UI (Excel): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
+  test('deletes a sheet via UI (Excel): confirm dialog, list updates, neutral message shown', async ({
+                                                                                                       page,
+                                                                                                       request,
+                                                                                                       baseURL
+                                                                                                     }) => {
     await putEngine(request, 'excel');
 
     // Excel caps sheet names at 31 chars; keep it short and unique.
     const sheetName = 'XL_DEL_1';
 
     await createTable(request, sheetName, [
-      { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-      { name: 'Name', type: 'TEXT' },
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
     ]);
 
     await goHome(page, baseURL);
@@ -1048,9 +958,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await confirmPrimeDelete(page);
 
     await waitForListItemHidden(page, sheetName);
-    await expect(page.getByText('Keine Tabelle ausgewählt.')).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(page.getByText('Keine Tabelle ausgewählt.')).toBeVisible({timeout: UI_TIMEOUT});
   });
-
 
   test('engine switch keeps UI visible and shows list overlay (not blank screen)', async ({page, request, baseURL}) => {
     // Start on SQLite with at least one item present
@@ -1110,5 +1019,4 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
     await dropObject(request, tableName);
   });
-
 });
