@@ -10,9 +10,11 @@ import {
   expectGroupHeaderHidden,
   expectGroupHeaderVisible,
   expectHeaderVisible,
+  generateRetryTestName,
   getHeaderLocator,
   getPaginatorControls,
   goHome,
+  initTestEnvironment,
   isPaginatorDisabled,
   parseNumericCellValue,
   putEngine,
@@ -136,11 +138,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — add column
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: add a column and UI shows it`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
       const name = `E2E_UI_AddCol_${cfg.label}`;
-
-      await goHome(page, baseURL);
-      await selectEngine(page, cfg.label);
+      await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
       await createTable(request, name, [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]);
 
@@ -159,11 +158,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — rename column
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: rename a column and UI reflects it`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
       const name = `E2E_UI_Rename_${cfg.label}`;
-
-      await goHome(page, baseURL);
-      await selectEngine(page, cfg.label);
+      await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
       await createTable(request, name, [
         {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
@@ -191,9 +187,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — selecting a table issues a single request (no duplicates)
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: selecting a table issues a single /tables/<name> request`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
-
       const name = `E2E_NoDupReq_${cfg.label}`;
+      await putEngine(request, cfg.key);
       await createTable(request, name, [
         {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
         {name: 'Name', type: 'TEXT'},
@@ -224,9 +219,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     test(`${cfg.label}: sorting sends sortBy/sortDir and issues one request per click`, async ({
                                                                                                  page, request, baseURL
                                                                                                }) => {
-      await putEngine(request, cfg.key);
-
       const name = `E2E_Sort_${cfg.label}`;
+      await putEngine(request, cfg.key);
       await createTable(request, name, [
         {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
         {name: 'Name', type: 'TEXT'},
@@ -384,9 +378,7 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — clearable search
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: clearable search (X) appears, clears input, keeps focus`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
-      await goHome(page, baseURL);
-      await selectEngine(page, cfg.label);
+      await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
       const input = page.locator('#list-filter-input');
       await expect(input).toBeVisible({timeout: UI_TIMEOUT});
@@ -407,9 +399,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — selection cannot be cleared by clicking selected item
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: cannot unselect by clicking the selected item`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
-
       const name = `E2E_NoUnselect_${cfg.label}`;
+      await putEngine(request, cfg.key);
       await createTable(request, name, [
         {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
         {name: 'Name', type: 'TEXT'},
@@ -439,9 +430,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // UI — delete via toolbar + neutral right-panel message
     // ───────────────────────────────────────────────────────────────
     test(`${cfg.label}: delete via UI → confirm, list updates, neutral message`, async ({page, request, baseURL}) => {
-      await putEngine(request, cfg.key);
-
       const name = `E2E_Delete_UI_${cfg.label}`;
+      await putEngine(request, cfg.key);
       await createTable(request, name, [
         {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
         {name: 'Name', type: 'TEXT'},
@@ -557,11 +547,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
     // ───────────────────────────────────────────────────────────────
     if (cfg.supportsViews) {
       test(`${cfg.label}: create VIEW joining Album + Artist`, async ({page, request, baseURL}) => {
-        await putEngine(request, cfg.key);
         const viewName = 'E2E_View_Join';
-
-        await goHome(page, baseURL);
-        await selectEngine(page, cfg.label);
+        await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
         await dsl(request, {
           operation: 'Select',
@@ -589,11 +576,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       });
 
       test(`${cfg.label}: create VIEW using OD_* functions and drop it`, async ({page, request, baseURL}) => {
-        await putEngine(request, cfg.key);
         const viewName = 'E2E_View_Funcs';
-
-        await goHome(page, baseURL);
-        await selectEngine(page, cfg.label);
+        await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
         await dsl(request, {
           operation: 'Select',
@@ -620,11 +604,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       });
 
       test(`${cfg.label}: OD_Wochentag shows German weekday`, async ({page, request, baseURL}) => {
-        await putEngine(request, cfg.key);
         const viewName = 'E2E_View_Wochentag';
-
-        await goHome(page, baseURL);
-        await selectEngine(page, cfg.label);
+        await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
         await dsl(request, {
           operation: 'Select',
@@ -647,18 +628,14 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
       });
 
       test(`${cfg.label}: "Sichten" group is visible`, async ({page, request, baseURL}) => {
-        await putEngine(request, cfg.key);
-        await goHome(page, baseURL);
-        await selectEngine(page, cfg.label);
+        await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
         await expectGroupHeaderVisible(page, 'SICHTEN');
         await expectGroupHeaderVisible(page, 'TABELLEN');
       });
     } else {
       test(`${cfg.label}: "Sichten" group is hidden`, async ({page, request, baseURL}) => {
-        await putEngine(request, cfg.key);
-        await goHome(page, baseURL);
-        await selectEngine(page, cfg.label);
+        await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
         await expectGroupHeaderHidden(page, 'SICHTEN');
         await expectGroupHeaderVisible(page, 'TABELLEN');
@@ -668,11 +645,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
 
   // NEW: Aggregates — SUM without GROUP BY (single-row materialized result)
   test(`${cfg.label}: aggregate SUM without GROUP BY (single row)`, async ({page, request, baseURL}) => {
-    await putEngine(request, cfg.key);
     const viewName = 'E2E_View_SumNoGroup';
-
-    await goHome(page, baseURL);
-    await selectEngine(page, cfg.label);
+    await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
     // Materialize: SUM over Chinook Invoice totals (no GROUP BY)
     await dsl(request, {
@@ -717,11 +691,8 @@ function registerCommonTestsForEngine(cfg: EngineCfg) {
                                                                                                  request,
                                                                                                  baseURL
                                                                                                }) => {
-    await putEngine(request, cfg.key);
     const viewName = 'E2E_View_ArtistAlbumCounts';
-
-    await goHome(page, baseURL);
-    await selectEngine(page, cfg.label);
+    await initTestEnvironment(page, request, cfg.key, cfg.label, baseURL);
 
     // Materialize: count albums per artist, order by count desc, take top 10
     await dsl(request, {

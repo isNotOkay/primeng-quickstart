@@ -298,3 +298,28 @@ export async function isPaginatorDisabled(locator: Locator): Promise<boolean> {
   const cls = await locator.getAttribute('class');
   return cls?.includes('p-disabled') || (await locator.isDisabled());
 }
+
+/** Generate a unique test object name with retry safety */
+export function generateTestName(prefix: string, suffix?: string): string {
+  const timestamp = Date.now().toString(36);
+  return suffix ? `${prefix}_${timestamp}_${suffix}` : `${prefix}_${timestamp}`;
+}
+
+/** Generate a retry-safe test name using testInfo */
+export function generateRetryTestName(prefix: string, testInfo: { retry: number; repeatEachIndex: number }): string {
+  const unique = `${Date.now().toString(36)}${testInfo.retry}${testInfo.repeatEachIndex}`;
+  return `${prefix}_${unique}`;
+}
+
+/** Initialize test environment: set engine and navigate home */
+export async function initTestEnvironment(
+  page: Page,
+  request: APIRequestContext,
+  engineKey: 'sqlite' | 'excel',
+  engineLabel: 'SQLite' | 'Excel',
+  baseURL?: string
+) {
+  await putEngine(request, engineKey);
+  await goHome(page, baseURL);
+  await selectEngine(page, engineLabel);
+}
