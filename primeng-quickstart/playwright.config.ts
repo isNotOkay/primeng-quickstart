@@ -1,18 +1,20 @@
-// playwright.config.ts
-import {defineConfig, devices} from '@playwright/test';
+// file: playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+const isCI = !!process.env["CI"];
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   workers: 1,
-  forbidOnly: !!process.env['CI'],
-  retries: process.env['CI'] ? 2 : 0,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
   reporter: 'html',
 
   use: {
     baseURL: process.env['PLAYWRIGHT_TEST_BASE_URL'] ?? 'http://localhost:4200',
     trace: 'on-first-retry',
-    headless: false,
+    headless: isCI, // headless in CI, headed locally
   },
 
   globalTeardown: './e2e/global-teardown.ts',
@@ -21,10 +23,12 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chrome',
-      use: {...devices['Desktop Chrome'], channel: 'chrome'},
+      // Use Playwright's bundled Chromium on CI; real Chrome locally.
+      name: isCI ? 'chromium' : 'chrome',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(isCI ? {} : { channel: 'chrome' }),
+      },
     },
-    // If you still want Edge, add it back alongside Chrome.
-    // { name: 'msedge', use: { ...devices['Desktop Edge'], channel: 'msedge' } },
   ],
 });

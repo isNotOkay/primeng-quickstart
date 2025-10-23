@@ -9,7 +9,8 @@
     "test": "ng test",
     "format": "prettier --write .",
     "lint": "ng lint --fix",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "e2e:ci": "cross-env CI=1 npx playwright install --with-deps && ng e2e --configuration production"
   },
   "prettier": {
     "printWidth": 120,
@@ -60,6 +61,7 @@
     "angular-eslint": "20.2.0",
     "eslint": "^9.33.0",
     "@playwright/test": "1.56.0",
-    "playwright-ng-schematics": "^2.1.1"
+    "playwright-ng-schematics": "^2.1.1",
+    "cross-env": "^7.0.3"
   }
 }
