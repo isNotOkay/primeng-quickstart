@@ -32,7 +32,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
   test('sqlite: GET /tables and POST /columns return data', async ({request}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_API_SQLITE_${Date.now()}`;
+    const tableName = 'E2E_API_SQLITE_1';
     await dsl(request, {
       operation: 'Create',
       target: {name: tableName},
@@ -84,7 +84,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
   test('excel: GET /tables and POST /columns return data', async ({request}) => {
     await putEngine(request, 'excel');
 
-    const sheetName = `E2E_API_XL_${Date.now()}`;
+    const sheetName = 'E2E_API_XL_1';
     await dsl(request, {
       operation: 'Create',
       target: {name: sheetName},
@@ -120,7 +120,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   test.describe.configure({mode: 'serial'});
 
   test('creates a new table via API and UI lists it', async ({page, request, baseURL}) => {
-    const tableName = `E2E_Playwright_Table_${Date.now()}`;
+    const tableName = 'E2E_Play_Table_API_UI';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -137,7 +137,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   });
 
   test('creates a VIEW joining Album + Artist and UI lists it', async ({page, request, baseURL}) => {
-    const viewName = `E2E_Playwright_View_${Date.now()}`;
+    const viewName = 'E2E_Play_View_Join';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -166,7 +166,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   });
 
   test('adds a column to a fresh E2E table and UI shows the new column', async ({page, request, baseURL}) => {
-    const tableName = `E2E_Playwright_Table_${Date.now()}`;
+    const tableName = 'E2E_Play_Table_Alter';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -181,7 +181,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   });
 
   test('creates a VIEW using functions (OD_*) and then drops it (UI updates)', async ({page, request, baseURL}) => {
-    const viewName = `E2E_Playwright_FuncView_${Date.now()}`;
+    const viewName = 'E2E_Play_FuncView_1';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -212,7 +212,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   });
 
   test('renames a column via DSL and UI reflects the new header', async ({page, request, baseURL}) => {
-    const tableName = `E2E_Playwright_Rename_${Date.now()}`;
+    const tableName = 'E2E_Play_Rename';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -240,7 +240,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   });
 
   test('creates a VIEW using OD_Wochentag and UI shows German weekday', async ({page, request, baseURL}) => {
-    const viewName = `E2E_Playwright_Wochentag_${Date.now()}`;
+    const viewName = 'E2E_Play_Wochentag';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -272,7 +272,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
   test('selecting a table issues a single /tables/<name> request (no duplicates)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_NoDupReq_${Date.now()}`;
+    const tableName = 'E2E_NoDupReq';
     // Create a tiny table so there is something to select (no rows needed)
     await createTable(request, tableName, [
       {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
@@ -333,7 +333,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
   test.describe.configure({mode: 'serial'});
 
   test('creates a new sheet via API and UI lists it (Excel)', async ({page, request, baseURL}) => {
-    const sheetName = `E2E_XL_Sheet_${Date.now()}`;
+    const sheetName = 'E2E_XL_Sheet_1';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
@@ -350,7 +350,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
   });
 
   test('adds a column on an Excel sheet and UI shows the new column', async ({page, request, baseURL}) => {
-    const sheetName = `E2E_XL_AddCol_${Date.now()}`;
+    const sheetName = 'E2E_XL_AddCol';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
@@ -365,7 +365,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
   });
 
   test('renames a column on an Excel sheet and UI reflects it', async ({page, request, baseURL}) => {
-    const sheetName = `E2E_XL_Rename_${Date.now()}`;
+    const sheetName = 'E2E_XL_Rename';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
@@ -400,7 +400,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
   });
 
   test('drops an Excel sheet and UI removes it', async ({page, request, baseURL}) => {
-    const sheetName = `E2E_XL_Drop_${Date.now()}`;
+    const sheetName = 'E2E_XL_Drop';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
@@ -415,7 +415,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
   });
 
   test('creates a VIEW using functions (OD_*) and then drops it (UI updates)', async ({page, request, baseURL}) => {
-    const viewName = `E2E_Playwright_FuncView_${Date.now()}`;
+    const viewName = 'E2E_Play_FuncView_2';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite'); // functions exist on SQLite side
@@ -483,7 +483,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     test('no request for previously selected table after switching engine', async ({page, request, baseURL}) => {
       // Ensure Excel is the current engine and create a sheet
       await putEngine(request, 'excel');
-      const sheetName = `E2E_XL_Stale_${Date.now()}`;
+      const sheetName = 'E2E_XL_Stale';
       await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER'}]);
 
       await goHome(page, baseURL);
@@ -527,7 +527,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Type a nonsense filter that matches nothing to show "Keine Ergebnisse gefunden." placeholders
     const search = page.getByPlaceholder('Suchen…');
-    await search.fill(`NO_MATCH_${Date.now()}`);
+    await search.fill('NO_MATCH');
 
     // Grab the first placeholder option (disabled)
     const placeholder = page
@@ -562,7 +562,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('sorting sends sortBy/sortDir when clicking headers (server-side sorting)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_Sort_${Date.now()}`;
+    const tableName = 'E2E_Sort';
     await createTable(request, tableName, [
       {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
       {name: 'Name', type: 'TEXT'},
@@ -609,7 +609,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('sorting issues a single request per click (no duplicates)', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_SortSingle_${Date.now()}`;
+    const tableName = 'E2E_SortSingle';
     await createTable(request, tableName, [
       {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
       {name: 'Name', type: 'TEXT'},
@@ -681,8 +681,8 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('column widths persist; new column gets cached after first resize', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const t1 = `E2E_Width_NewCol_A_${Date.now()}`;
-    const t2 = `E2E_Width_NewCol_B_${Date.now()}`;
+    const t1 = 'E2E_Width_NewCol_A';
+    const t2 = 'E2E_Width_NewCol_B';
 
     // Create two small tables
     for (const name of [t1, t2]) {
@@ -813,7 +813,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(clearBtn).toHaveCount(0);
 
     // Type something -> clear button appears
-    await input.fill(`NO_MATCH_${Date.now()}`);
+    await input.fill('NO_MATCH');
     await expect(clearBtn).toBeVisible({timeout: UI_TIMEOUT});
 
     // Click clear -> input empty, button disappears, focus stays on input
@@ -830,7 +830,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
                                                                                                }) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_NoUnselect_${Date.now()}`;
+    const tableName = 'E2E_NoUnselect';
     await createTable(request, tableName, [
       {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
       {name: 'Name', type: 'TEXT'},
@@ -871,7 +871,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('SignalR toast de-dupe: exactly one toast for create and one for update', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_Toast_CreateUpdate_${Date.now()}`;
+    const tableName = 'E2E_Toast_CreateUpdate';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -924,7 +924,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('SignalR toast de-dupe: exactly one toast for delete', async ({page, request, baseURL}) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_Toast_Delete_${Date.now()}`;
+    const tableName = 'E2E_Toast_Delete';
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -956,7 +956,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
 
     // (Optional) ensure file exists by touching the DB
-    const tableName = `E2E_DL_SQL_${Date.now()}`;
+    const tableName = 'E2E_DL_SQL';
     await createTable(request, tableName, [{name: 'Id', type: 'INTEGER'}]);
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Sqlite`);
@@ -968,7 +968,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'excel');
 
     // Ensure workbook exists by creating a sheet
-    const sheetName = `E2E_DL_XL_${Date.now()}`;
+    const sheetName = 'E2E_DL_XL';
     await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER'}]);
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Excel`);
@@ -979,7 +979,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('deletes a table via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
     await putEngine(request, 'sqlite');
 
-    const tableName = `E2E_SQL_DeleteTable_UI_${Date.now()}`;
+    const tableName = 'E2E_SQL_DeleteTable_UI';
     await createTable(request, tableName, [
       { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
       { name: 'Name', type: 'TEXT' },
@@ -1002,7 +1002,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('deletes a view via UI (SQLite): confirm dialog, list updates, neutral message shown', async ({ page, request, baseURL }) => {
     await putEngine(request, 'sqlite');
 
-    const viewName = `E2E_SQL_DeleteView_UI_${Date.now()}`;
+    const viewName = 'E2E_SQL_DeleteView_UI';
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
@@ -1030,8 +1030,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'excel');
 
     // Excel caps sheet names at 31 chars; keep it short and unique.
-    const stamp = Date.now().toString(36);
-    const sheetName = `XL_DEL_${stamp}`;
+    const sheetName = 'XL_DEL_1';
 
     await createTable(request, sheetName, [
       { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
@@ -1056,7 +1055,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
   test('engine switch keeps UI visible and shows list overlay (not blank screen)', async ({page, request, baseURL}) => {
     // Start on SQLite with at least one item present
     await putEngine(request, 'sqlite');
-    const tableName = `E2E_EngineSwitch_UI_${Date.now()}`;
+    const tableName = 'E2E_EngineSwitch_UI';
     await createTable(request, tableName, [
       {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
       {name: 'Name', type: 'TEXT'},
