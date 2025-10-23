@@ -196,7 +196,7 @@ export async function createTableAndSelect(
   name: string,
   schema: unknown[],
   engine: 'SQLite' | 'Excel' | undefined = undefined,
-  baseURL?: string
+  baseURL?: string,
 ) {
   await goHome(page, baseURL);
   if (engine) {
@@ -317,7 +317,7 @@ export async function initTestEnvironment(
   request: APIRequestContext,
   engineKey: 'sqlite' | 'excel',
   engineLabel: 'SQLite' | 'Excel',
-  baseURL?: string
+  baseURL?: string,
 ) {
   await putEngine(request, engineKey);
   await goHome(page, baseURL);
