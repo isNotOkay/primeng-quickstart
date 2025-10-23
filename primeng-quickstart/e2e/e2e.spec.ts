@@ -4,6 +4,8 @@ import {
   API_BASE,
   UI_TIMEOUT,
   dsl,
+  createTable,
+  dropObject,
   putEngine,
   confirmPrimeDelete,
   clickToolbarDelete,
@@ -55,7 +57,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
     expect(Array.isArray(columns)).toBeTruthy();
     expect(columns).toEqual(expect.arrayContaining(['Id', 'Name']));
 
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
   test('engine dropdown reflects persisted setting on load and after change', async ({page, request, baseURL}) => {
@@ -107,7 +109,7 @@ test.describe('Tool Server API — tables & columns (no UI)', () => {
     expect(Array.isArray(columns)).toBeTruthy();
     expect(columns).toEqual(expect.arrayContaining(['Id', 'Name']));
 
-    await dsl(request, {operation: 'Drop', target: {name: sheetName}, drop: {}});
+    await dropObject(request, sheetName);
   });
 });
 
@@ -123,17 +125,10 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'SomeDate', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'SomeDate', type: 'TEXT'},
+    ]);
 
     const navItem = await waitForListItemVisible(page, tableName);
     await navItem.click(); // ok even if auto-selected
@@ -147,6 +142,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
+    // leave Select operations as-is (not a Create)
     await dsl(request, {
       operation: 'Select',
       target: {name: viewName},
@@ -175,21 +171,12 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
-    });
+    await createTable(request, tableName, [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]);
 
     await waitForListItemVisible(page, tableName).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
-    await dsl(request, {
-      operation: 'Alter',
-      target: {name: tableName},
-      alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
-    });
-
+    await dsl(request, {operation: 'Alter', target: {name: tableName}, alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}});
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -199,6 +186,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
+    // Select (view) creation kept as dsl
     await dsl(request, {
       operation: 'Select',
       target: {name: viewName},
@@ -229,17 +217,10 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'OldCol', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'OldCol', type: 'TEXT'},
+    ]);
 
     await waitForListItemVisible(page, tableName).then((i) => i.click());
     await expectHeaderVisible(page, 'OldCol');
@@ -264,6 +245,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
 
+    // Keep Select-based view creation via dsl
     await dsl(request, {
       operation: 'Select',
       target: {name: viewName},
@@ -292,17 +274,10 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
 
     const tableName = `E2E_NoDupReq_${Date.now()}`;
     // Create a tiny table so there is something to select (no rows needed)
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -347,7 +322,7 @@ test.describe('Tool Server ↔ Angular UI — basics (SQLite)', () => {
     page.off('requestfinished', onFinished);
     page.off('requestfailed', onFailed);
 
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 });
 
@@ -363,17 +338,10 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, sheetName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     const navItem = await waitForListItemVisible(page, sheetName);
     await navItem.click();
@@ -387,21 +355,12 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
-    });
+    await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]);
 
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
     await expectHeaderVisible(page, 'Id');
 
-    await dsl(request, {
-      operation: 'Alter',
-      target: {name: sheetName},
-      alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]},
-    });
-
+    await dsl(request, {operation: 'Alter', target: {name: sheetName}, alter: {actions: [{addColumn: {name: 'AddedCol', type: 'TEXT'}}]}});
     await expectHeaderVisible(page, 'AddedCol');
   });
 
@@ -411,17 +370,10 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'OldCol', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, sheetName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'OldCol', type: 'TEXT'},
+    ]);
 
     // Open it once to load
     await waitForListItemVisible(page, sheetName).then((i) => i.click());
@@ -453,11 +405,7 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
 
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]},
-    });
+    await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true}]);
 
     await waitForListItemVisible(page, sheetName);
 
@@ -466,13 +414,13 @@ test.describe('Tool Server ↔ Angular UI — Excel', () => {
     await waitForListItemHidden(page, sheetName);
   });
 
-  // This one still uses SQLite (functions) but benefits from SignalR waits
   test('creates a VIEW using functions (OD_*) and then drops it (UI updates)', async ({page, request, baseURL}) => {
     const viewName = `E2E_Playwright_FuncView_${Date.now()}`;
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite'); // functions exist on SQLite side
 
+    // Select (view) creation kept as dsl
     await dsl(request, {
       operation: 'Select',
       target: {name: viewName},
@@ -536,11 +484,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
       // Ensure Excel is the current engine and create a sheet
       await putEngine(request, 'excel');
       const sheetName = `E2E_XL_Stale_${Date.now()}`;
-      await dsl(request, {
-        operation: 'Create',
-        target: {name: sheetName},
-        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
-      });
+      await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER'}]);
 
       await goHome(page, baseURL);
       await selectEngine(page, 'Excel');
@@ -567,7 +511,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
       // Cleanup the created sheet
       await putEngine(request, 'excel');
-      await dsl(request, {operation: 'Drop', target: {name: sheetName}, drop: {}});
+      await dropObject(request, sheetName);
     });
   });
 
@@ -619,17 +563,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_Sort_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -664,7 +601,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await clickHeaderAndExpect('asc');
     await clickHeaderAndExpect('desc');
 
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
   // Add this test near your other sorting tests (e.g., in the "Left listbox groups — ..." describe)
@@ -673,17 +610,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_SortSingle_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -744,7 +674,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expectSingleSortRequest('asc');
     await expectSingleSortRequest('desc');
 
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
 
@@ -756,11 +686,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Create two small tables
     for (const name of [t1, t2]) {
-      await dsl(request, {
-        operation: 'Create',
-        target: {name},
-        create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]},
-      });
+      await createTable(request, name, [{name: 'Id', type: 'INTEGER'}, {name: 'Name', type: 'TEXT'}]);
     }
 
     await goHome(page, baseURL);
@@ -869,7 +795,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Cleanup
     for (const name of [t1, t2]) {
-      await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+      await dropObject(request, name);
     }
   });
 
@@ -905,17 +831,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_NoUnselect_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -945,7 +864,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(li).toHaveClass(/p-listbox-option-selected/);
 
     // Cleanup
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
 
@@ -999,7 +918,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await expect(updatedToast).toHaveCount(1);
 
     // Cleanup
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
   test('SignalR toast de-dupe: exactly one toast for delete', async ({page, request, baseURL}) => {
@@ -1038,11 +957,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // (Optional) ensure file exists by touching the DB
     const tableName = `E2E_DL_SQL_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
-    });
+    await createTable(request, tableName, [{name: 'Id', type: 'INTEGER'}]);
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Sqlite`);
     const bodyPreview = await res.text(); // for easier debugging on failure
@@ -1054,11 +969,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
 
     // Ensure workbook exists by creating a sheet
     const sheetName = `E2E_DL_XL_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: sheetName},
-      create: {kind: 'Table', schema: [{name: 'Id', type: 'INTEGER'}]},
-    });
+    await createTable(request, sheetName, [{name: 'Id', type: 'INTEGER'}]);
 
     const res = await request.get(`${API_BASE}/api/web-viewer/download?engine=Excel`);
     const bodyPreview = await res.text(); // for easier debugging on failure
@@ -1069,17 +980,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await putEngine(request, 'sqlite');
 
     const tableName = `E2E_SQL_DeleteTable_UI_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: { name: tableName },
-      create: {
-        kind: 'Table',
-        schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+      { name: 'Name', type: 'TEXT' },
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'SQLite');
@@ -1129,17 +1033,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     const stamp = Date.now().toString(36);
     const sheetName = `XL_DEL_${stamp}`;
 
-    await dsl(request, {
-      operation: 'Create',
-      target: { name: sheetName },
-      create: {
-        kind: 'Table',
-        schema: [
-          { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
-          { name: 'Name', type: 'TEXT' },
-        ],
-      },
-    });
+    await createTable(request, sheetName, [
+      { name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true },
+      { name: 'Name', type: 'TEXT' },
+    ]);
 
     await goHome(page, baseURL);
     await selectEngine(page, 'Excel');
@@ -1160,17 +1057,10 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     // Start on SQLite with at least one item present
     await putEngine(request, 'sqlite');
     const tableName = `E2E_EngineSwitch_UI_${Date.now()}`;
-    await dsl(request, {
-      operation: 'Create',
-      target: {name: tableName},
-      create: {
-        kind: 'Table',
-        schema: [
-          {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
-          {name: 'Name', type: 'TEXT'},
-        ],
-      },
-    });
+    await createTable(request, tableName, [
+      {name: 'Id', type: 'INTEGER', primaryKey: true, notNull: true},
+      {name: 'Name', type: 'TEXT'},
+    ]);
 
     await goHome(page, baseURL);
 
@@ -1219,7 +1109,7 @@ test.describe('Left listbox groups — "Sichten" hidden for Excel', () => {
     await page.unroute('**/api/web-viewer/views*');
 
     await putEngine(request, 'sqlite');
-    await dsl(request, {operation: 'Drop', target: {name: tableName}, drop: {}});
+    await dropObject(request, tableName);
   });
 
 });

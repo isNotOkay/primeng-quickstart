@@ -185,3 +185,43 @@ export async function expectGroupHeaderHidden(page: Page, name: string) {
   await expect(g).toHaveCount(0, {timeout: UI_TIMEOUT});
 }
 
+/**
+ * Create a table (or sheet) via the DSL with the provided schema.
+ * Schema should be an array of {name,type,...} entries.
+ */
+export async function createTable(request: APIRequestContext, name: string, schema: unknown[]) {
+  await dsl(request, {
+    operation: 'Create',
+    target: {name},
+    create: {kind: 'Table', schema},
+  });
+}
+
+/**
+ * Drop a table/view/sheet by name via the DSL.
+ */
+export async function dropObject(request: APIRequestContext, name: string) {
+  await dsl(request, {operation: 'Drop', target: {name}, drop: {}});
+}
+
+/**
+ * Convenience: ensure home is loaded, optional engine selection, create an object and select it in the UI.
+ * Returns the Locator for the selected item.
+ */
+export async function createTableAndSelect(
+  page: Page,
+  request: APIRequestContext,
+  name: string,
+  schema: unknown[],
+  engine: 'SQLite' | 'Excel' | undefined = undefined,
+  baseURL?: string
+): Promise<Locator> {
+  await goHome(page, baseURL);
+  if (engine) {
+    await selectEngine(page, engine);
+  }
+  await createTable(request, name, schema);
+  const item = await waitForListItemVisible(page, name);
+  await item.click();
+  return item;
+}
