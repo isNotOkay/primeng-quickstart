@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "lint": "ng lint --fix",
     "e2e": "ng e2e",
-    "e2e:ci": "cross-env CI=1 npx playwright install --with-deps && ng e2e --configuration production"
+    "e2e:headless": "cross-env CI=1 npx playwright install --with-deps && ng e2e --configuration production"
   },
   "prettier": {
     "printWidth": 120,
