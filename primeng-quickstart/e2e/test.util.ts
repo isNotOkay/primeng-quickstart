@@ -21,7 +21,6 @@ export async function putEngine(request: APIRequestContext, engine: 'sqlite' | '
 
 /** Clicks the confirm 'Löschen' button in the PrimeNG ConfirmDialog */
 export async function confirmPrimeDelete(page: Page) {
-  // Find the visible PrimeNG dialog by its container rather than ARIA name
   const dlg = page
     .locator('.p-dialog:visible')
     .filter({
@@ -39,7 +38,6 @@ export async function clickToolbarDelete(page: Page) {
     .waitFor({ state: 'detached', timeout: UI_TIMEOUT })
     .catch(() => {});
 
-  // Wait until the button exists and is clickable
   const deleteBtn = page.locator('#toolbar-delete');
   await deleteBtn.waitFor({ state: 'visible', timeout: UI_TIMEOUT });
   await expect(deleteBtn).toBeEnabled({ timeout: UI_TIMEOUT });
@@ -52,10 +50,8 @@ export async function waitForListsReady(page: Page) {
   const listbox = page.locator('.left-listbox');
   await expect(listbox).toBeVisible({ timeout: UI_TIMEOUT });
 
-  // At least one group header (PrimeNG uses li.p-listbox-option-group)
   await expect(listbox.locator('li.p-listbox-option-group').first()).toBeVisible({ timeout: UI_TIMEOUT });
 
-  // At least one option (or placeholder)
   const anyItem = listbox.locator('li.p-listbox-option').first();
   await expect(anyItem).toBeVisible({ timeout: UI_TIMEOUT });
 }
@@ -81,12 +77,11 @@ export async function openSelectOverlay(selectRoot: Locator) {
         await cand.first().click({ timeout: 1500 });
         return;
       } catch {
-        // try next
+        /* try next */
       }
     }
   }
 
-  // Keyboard fallback
   if ((await selectRoot.getByRole('combobox').count()) > 0) {
     const combo = selectRoot.getByRole('combobox').first();
     await combo.focus();
@@ -100,7 +95,6 @@ export async function openSelectOverlay(selectRoot: Locator) {
     } catch {}
   }
 
-  // Last resort: click near the top-left of the component
   await selectRoot.click({ position: { x: 5, y: 5 }, timeout: 1500 });
 }
 
@@ -147,7 +141,6 @@ export async function selectEngine(page: Page, engine: 'SQLite' | 'Excel') {
   await waitForListsReady(page);
 }
 
-// Works whether PrimeNG adds ARIA roles or not
 export async function expectHeaderVisible(page: Page, name: string) {
   const byRole = page.getByRole('columnheader', { name, exact: true });
   if ((await byRole.count()) > 0) {
@@ -157,14 +150,12 @@ export async function expectHeaderVisible(page: Page, name: string) {
   }
 }
 
-/** Wait until a specific list item appears (SignalR-driven for both engines) */
 export async function waitForListItemVisible(page: Page, text: string): Promise<Locator> {
   const item = page.locator('.left-listbox').getByText(text, { exact: true });
   await expect(item).toBeVisible({ timeout: UI_TIMEOUT });
   return item;
 }
 
-/** Wait until a specific list item disappears (SignalR-driven for both engines) */
 export async function waitForListItemHidden(page: Page, text: string): Promise<void> {
   const item = page.locator('.left-listbox').getByText(text, { exact: true });
   await expect(item).toBeHidden({ timeout: UI_TIMEOUT });
@@ -186,10 +177,6 @@ export async function expectGroupHeaderHidden(page: Page, name: string) {
   await expect(g).toHaveCount(0, { timeout: UI_TIMEOUT });
 }
 
-/**
- * Create a table (or sheet) via the DSL with the provided schema.
- * Schema should be an array of {name,type,...} entries.
- */
 export async function createTable(request: APIRequestContext, name: string, schema: unknown[]) {
   await dsl(request, {
     operation: 'Create',
@@ -198,17 +185,11 @@ export async function createTable(request: APIRequestContext, name: string, sche
   });
 }
 
-/**
- * Drop a table/view/sheet by name via the DSL.
- */
 export async function dropObject(request: APIRequestContext, name: string) {
   await dsl(request, { operation: 'Drop', target: { name }, drop: {} });
 }
 
-/**
- * Convenience: ensure home is loaded, optional engine selection, create an object and select it in the UI.
- * Returns the Locator for the selected item.
- */
+/** Optional helper kept for convenience */
 export async function createTableAndSelect(
   page: Page,
   request: APIRequestContext,
@@ -216,7 +197,7 @@ export async function createTableAndSelect(
   schema: unknown[],
   engine: 'SQLite' | 'Excel' | undefined = undefined,
   baseURL?: string
-): Promise<Locator> {
+) {
   await goHome(page, baseURL);
   if (engine) {
     await selectEngine(page, engine);
