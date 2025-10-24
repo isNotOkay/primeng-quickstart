@@ -8,13 +8,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { RatingModule } from 'primeng/rating';
-
-interface Product {
-  name: string;
-  category: string;
-  price: number;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
-}
+import { ProductModel } from '../../models/product.model';
 @Component({
   selector: 'product-overview-widget',
   standalone: true,
@@ -97,9 +91,9 @@ interface Product {
   `
 })
 export class ProductOverviewWidget {
-  selectedProduct!: Product;
+  selectedProduct!: ProductModel;
 
-  products: Product[] = [
+  products: ProductModel[] = [
     {
       name: 'Laptop Pro',
       category: 'Electronics',

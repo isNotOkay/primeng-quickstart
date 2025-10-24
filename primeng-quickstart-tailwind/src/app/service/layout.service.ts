@@ -1,31 +1,25 @@
 import { effect, Injectable, signal, WritableSignal } from '@angular/core';
 import { Subject } from 'rxjs';
-
-export interface AppState {
-  preset: string;
-  primary: string;
-  surface: string | undefined | null;
-  darkMode: boolean;
-}
+import { AppStateModel } from '../models/app-state.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LayoutService {
-  _appState: AppState = {
+  _appState: AppStateModel = {
     preset: 'Aura',
     primary: 'emerald',
     surface: null,
     darkMode: false,
   };
 
-  appState = signal<AppState>(this._appState);
+  appState = signal<AppStateModel>(this._appState);
 
   transitionComplete: WritableSignal<boolean> = signal<boolean>(false);
 
   private initialized = false;
 
-  private appStateUpdate = new Subject<AppState>();
+  private appStateUpdate = new Subject<AppStateModel>();
 
   appStateUpdate$ = this.appStateUpdate.asObservable();
 
@@ -49,7 +43,7 @@ export class LayoutService {
     });
   }
 
-  private handleDarkModeTransition(config: AppState): void {
+  private handleDarkModeTransition(config: AppStateModel): void {
     if ((document as any).startViewTransition) {
       this.startViewTransition(config);
     } else {
@@ -58,7 +52,7 @@ export class LayoutService {
     }
   }
 
-  private startViewTransition(config: AppState): void {
+  private startViewTransition(config: AppStateModel): void {
     const transition = (document as any).startViewTransition(() => {
       this.toggleDarkMode(config);
     });
@@ -70,7 +64,7 @@ export class LayoutService {
       .catch(() => {});
   }
 
-  toggleDarkMode(appState?: AppState): void {
+  toggleDarkMode(appState?: AppStateModel): void {
     const _appState = appState || this.appState();
     if (_appState.darkMode) {
       document.documentElement.classList.add('p-dark');
