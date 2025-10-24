@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { TableStateService, ColWidths } from './table-state.service';
+import { TableStateService, ColWidths } from '../../services/table-state.service';
 
 describe('TableStateService', () => {
   let service: TableStateService;

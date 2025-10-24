@@ -1,4 +1,4 @@
-import { extractFilenameFromContentDisposition, downloadBlobAsFile } from './file.util';
+import { extractFilenameFromContentDisposition, downloadBlobAsFile } from '../../utils/file.util';
 
 describe('File Utils', () => {
   describe('extractFilenameFromContentDisposition', () => {

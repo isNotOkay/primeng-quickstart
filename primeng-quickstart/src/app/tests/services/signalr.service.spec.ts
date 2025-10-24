@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { SignalRService, CreateOrUpdateRelationEvent, DeleteRelationEvent } from './signalr.service';
-import { RelationType } from '../enums/relation-type.enum';
+import { SignalRService, CreateOrUpdateRelationEvent, DeleteRelationEvent } from '../../services/signalr.service';
+import { RelationType } from '../../enums/relation-type.enum';
 import * as signalR from '@microsoft/signalr';
 
 describe('SignalRService', () => {

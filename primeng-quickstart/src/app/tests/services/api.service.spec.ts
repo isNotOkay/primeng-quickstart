@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { ApiService } from './api.service';
-import { EngineType } from '../enums/engine-type.enum';
-import { RelationType } from '../enums/relation-type.enum';
-import { PagedResultApiModel } from '../models/api/paged-result.api-model';
-import { RelationApiModel } from '../models/api/relation.api-model';
-import { RowModel } from '../models/row.model';
+import { ApiService } from '../../services/api.service';
+import { EngineType } from '../../enums/engine-type.enum';
+import { RelationType } from '../../enums/relation-type.enum';
+import { PagedResultApiModel } from '../../models/api/paged-result.api-model';
+import { RelationApiModel } from '../../models/api/relation.api-model';
+import { RowModel } from '../../models/row.model';
 
 describe('ApiService', () => {
   let service: ApiService;

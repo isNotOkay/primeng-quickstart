@@ -1,10 +1,10 @@
-import { RelationType } from '../enums/relation-type.enum';
+import { RelationType } from '../../enums/relation-type.enum';
 import {
   makeRelationValue,
   parseRelationValue,
   getRelationTypeLabel,
   makeRelationKey,
-} from './relation.util';
+} from '../../utils/relation.util';
 
 describe('Relation Utils', () => {
   describe('makeRelationValue', () => {
