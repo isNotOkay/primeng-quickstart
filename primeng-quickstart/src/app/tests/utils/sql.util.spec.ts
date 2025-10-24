@@ -1,5 +1,5 @@
-import { RelationType } from '../enums/relation-type.enum';
-import { getRelationTypeName } from './sql.util';
+import { RelationType } from '../../enums/relation-type.enum';
+import { getRelationTypeName } from '../../utils/sql.util';
 
 describe('SQL Utils', () => {
   describe('getRelationTypeName (deprecated)', () => {
