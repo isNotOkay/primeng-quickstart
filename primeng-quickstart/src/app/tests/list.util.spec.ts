@@ -1,4 +1,4 @@
-import { isListOptionDisabled, rowTrackByFn, isNumber } from './list.util';
+import { isListOptionDisabled, rowTrackByFn, isNumber } from '../utils/list.util';
 
 describe('List Utils', () => {
   describe('isListOptionDisabled', () => {

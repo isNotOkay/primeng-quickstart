@@ -1,4 +1,4 @@
-import { normalizeString } from './string.util';
+import { normalizeString } from '../utils/string.util';
 
 describe('String Utils', () => {
   describe('normalizeString', () => {

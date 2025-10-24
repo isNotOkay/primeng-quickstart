@@ -1,4 +1,4 @@
-import { createAnchorId } from './dom.util';
+import { createAnchorId } from '../utils/dom.util';
 
 describe('DOM Utils', () => {
   describe('createAnchorId', () => {
