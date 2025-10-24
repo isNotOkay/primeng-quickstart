@@ -12,6 +12,8 @@
 
   .p-splitter {
     border-radius: 0 !important;
+    height: 100%;
+    width: 100%;
   }
 }
 
@@ -137,8 +139,49 @@
 
 .numeric-cell {
   font-variant-numeric: tabular-nums;
+
+  &.text-align-right {
+    text-align: right;
+  }
+
+  &.text-align-left {
+    text-align: left;
+  }
 }
 
 .empty-message {
   padding: 0.75rem;
+}
+
+::ng-deep .left-listbox {
+  width: 100%;
+  flex-grow: 1;
+  overflow: auto;
+  border: none;
+  box-shadow: none;
+
+  .p-listbox-list-container {
+    overflow: auto;
+    max-height: 100%;
+  }
+}
+
+.listbox-item-placeholder {
+  padding-left: 0.25rem;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.listbox-item-normal {
+  padding-left: 1rem;
+  opacity: 1;
+}
+
+::ng-deep .p-table-wrapper {
+  flex: 1 1 0;
+}
+
+::ng-deep .p-table-scrollable-body-table,
+::ng-deep .p-table-scrollable-header-table {
+  width: max-content;
 }

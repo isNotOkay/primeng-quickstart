@@ -1,6 +1,7 @@
 // file: src/app/app.component.ts
 import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 
 import { Table, TableModule } from 'primeng/table';
 import { SplitterModule } from 'primeng/splitter';
@@ -48,6 +49,7 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
   selector: 'app-root',
   standalone: true,
   imports: [
+    NgClass,
     FormsModule,
     ReactiveFormsModule,
     TableModule,
