@@ -7,10 +7,7 @@ import { RelationType } from '../enums/relation-type.enum';
 import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from '../constants/api-params.constants';
 import { RowModel } from '../models/row.model';
 import { EngineType } from '../enums/engine-type.enum';
-
-export interface EngineDto {
-  engine: EngineType;
-}
+import { EngineDtoApiModel } from '../models/api/engine-dto.api-model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -18,14 +15,14 @@ export class ApiService {
   private readonly apiPrefix = '/api/web-viewer';
 
   // ── Settings ───────────────────────────────────────────────────
-  getEngine(): Observable<EngineDto> {
+  getEngine(): Observable<EngineDtoApiModel> {
     // keep casing as returned by the backend
-    return this.http.get<EngineDto>(`${this.apiPrefix}/settings/engine`);
+    return this.http.get<EngineDtoApiModel>(`${this.apiPrefix}/settings/engine`);
   }
 
-  setEngine(engine: EngineType): Observable<EngineDto> {
+  setEngine(engine: EngineType): Observable<EngineDtoApiModel> {
     // send the enum value as-is ("Excel" or "Sqlite")
-    return this.http.put<EngineDto>(`${this.apiPrefix}/settings/engine`, { engine });
+    return this.http.put<EngineDtoApiModel>(`${this.apiPrefix}/settings/engine`, { engine });
   }
 
   // ── Lists ──────────────────────────────────────────────────────

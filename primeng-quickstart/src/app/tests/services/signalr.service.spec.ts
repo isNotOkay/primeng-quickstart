@@ -1,21 +1,26 @@
-import { TestBed } from '@angular/core/testing';
-import { SignalRService, CreateOrUpdateRelationEvent, DeleteRelationEvent } from '../../services/signalr.service';
-import { RelationType } from '../../enums/relation-type.enum';
+// file: src/app/tests/services/signalr.service.spec.ts
+import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 import * as signalR from '@microsoft/signalr';
+import { RelationType } from '../../enums/relation-type.enum';
+import { CreateOrUpdateRelationEventModel } from '../../models/create-or-update-relation-event.model';
+import { SignalRService } from '../../services/signalr.service';
 
 describe('SignalRService', () => {
   let service: SignalRService;
+  let consoleErrorSpy: jasmine.Spy;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [SignalRService],
     });
     service = TestBed.inject(SignalRService);
+
+    // Silence expected error logs from start failures in tests
+    consoleErrorSpy = spyOn(console, 'error').and.stub();
   });
 
-  afterEach(() => {
-    // Clean up any existing connections
-    service.stop();
+  afterEach(async () => {
+    await service.stop();
   });
 
   it('should be created', () => {
@@ -25,7 +30,6 @@ describe('SignalRService', () => {
   describe('observables', () => {
     it('should expose onCreateOrUpdateRelation$ observable', (done) => {
       expect(service.onCreateOrUpdateRelation$).toBeDefined();
-      // Test that it's subscribable
       const subscription = service.onCreateOrUpdateRelation$.subscribe();
       expect(subscription).toBeDefined();
       subscription.unsubscribe();
@@ -81,17 +85,13 @@ describe('SignalRService', () => {
     });
 
     it('should call hub.stop when hub exists', async () => {
-      // Create a mock hub
       const mockHub = {
         stop: jasmine.createSpy('stop').and.returnValue(Promise.resolve()),
         state: signalR.HubConnectionState.Disconnected,
       };
 
-      // Set the private hub property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
 
-      // Now stop should work
       await service.stop();
       expect(mockHub.stop).toHaveBeenCalled();
     });
@@ -99,27 +99,17 @@ describe('SignalRService', () => {
 
   describe('startAndWait', () => {
     it('should return resolved promise when already connected', async () => {
-      // Create a mock hub with connected state
       const mockHub = {
         state: signalR.HubConnectionState.Connected,
         stop: jasmine.createSpy('stop').and.returnValue(Promise.resolve()),
       };
 
-      // Set the private hub property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
 
       await expectAsync(service.startAndWait()).toBeResolved();
     });
 
-    it('should emit onConnectionLost$ when start fails', (done) => {
-      service.onConnectionLost$.subscribe(() => {
-        // Clean up to prevent actual connection attempts
-        service.stop();
-        done();
-      });
-
-      // Create a mock hub that will fail on start
+    it('should emit onConnectionLost$ when start fails', fakeAsync(() => {
       const mockHub = {
         state: signalR.HubConnectionState.Disconnected,
         start: jasmine.createSpy('start').and.returnValue(Promise.reject(new Error('Connection failed'))),
@@ -130,19 +120,21 @@ describe('SignalRService', () => {
         stop: jasmine.createSpy('stop').and.returnValue(Promise.resolve()),
       };
 
-      // Set the private hub property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).handlersBound = true;
 
-      service.startAndWait().catch(() => {
-        // Expected to fail
-      });
-    });
+      const lostSpy = jasmine.createSpy('lost');
+      service.onConnectionLost$.subscribe(lostSpy);
 
-    it('should handle multiple concurrent start calls', async () => {
-      // Create a mock hub
+      service.startAndWait().catch(() => {});
+      flushMicrotasks();
+
+      expect(mockHub.start).toHaveBeenCalled();
+      expect(lostSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith('SignalR start/negotiate failed', jasmine.any(Error));
+    }));
+
+    it('should handle multiple concurrent start calls', fakeAsync(() => {
       const mockHub = {
         state: signalR.HubConnectionState.Disconnected,
         start: jasmine.createSpy('start').and.returnValue(Promise.reject(new Error('Connection failed'))),
@@ -153,31 +145,25 @@ describe('SignalRService', () => {
         stop: jasmine.createSpy('stop').and.returnValue(Promise.resolve()),
       };
 
-      // Set the private hub property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).handlersBound = true;
 
-      // Call start multiple times without awaiting
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise1 = service.startAndWait().catch(() => {});
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise2 = service.startAndWait().catch(() => {});
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise3 = service.startAndWait().catch(() => {});
+      const p1 = service.startAndWait().catch(() => {});
+      const p2 = service.startAndWait().catch(() => {});
+      const p3 = service.startAndWait().catch(() => {});
+      void p1; void p2; void p3;
 
-      // All promises should resolve/reject
-      await Promise.allSettled([promise1, promise2, promise3]);
+      flushMicrotasks();
 
-      // This test just ensures no errors are thrown
-      expect(true).toBe(true);
-    });
+      // At least one start attempt should be made; service coalesces via startPromise
+      expect(mockHub.start).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    }));
   });
 
   describe('event handling', () => {
     it('should emit CreateOrUpdateRelation event with correct data for table', (done) => {
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.Table,
         name: 'Users',
         created: true,
@@ -190,13 +176,11 @@ describe('SignalRService', () => {
         done();
       });
 
-      // Trigger the event by accessing the private subject
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
     });
 
     it('should emit CreateOrUpdateRelation event with correct data for view', (done) => {
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.View,
         name: 'UserView',
         created: false,
@@ -209,14 +193,14 @@ describe('SignalRService', () => {
         done();
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
     });
 
     it('should emit DeleteRelation event with correct data', (done) => {
-      const mockEvent: DeleteRelationEvent = {
+      const mockEvent = {
         relationType: RelationType.Table,
         name: 'Users',
+        created: true,
       };
 
       service.onDeleteRelation$.subscribe((event) => {
@@ -225,7 +209,6 @@ describe('SignalRService', () => {
         done();
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).deleteRelationSubject.next(mockEvent);
     });
 
@@ -235,7 +218,6 @@ describe('SignalRService', () => {
         done();
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).connectionLostSubject.next();
     });
 
@@ -245,7 +227,6 @@ describe('SignalRService', () => {
         done();
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).reconnectingSubject.next();
     });
 
@@ -255,7 +236,6 @@ describe('SignalRService', () => {
         done();
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).reconnectedSubject.next();
     });
   });
@@ -265,7 +245,7 @@ describe('SignalRService', () => {
       let subscriber1Called = false;
       let subscriber2Called = false;
 
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.Table,
         name: 'Test',
         created: true,
@@ -279,7 +259,6 @@ describe('SignalRService', () => {
         subscriber2Called = true;
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
 
       setTimeout(() => {
@@ -293,9 +272,10 @@ describe('SignalRService', () => {
       let subscriber1Called = false;
       let subscriber2Called = false;
 
-      const mockEvent: DeleteRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.View,
         name: 'Test',
+        created: true,
       };
 
       service.onDeleteRelation$.subscribe(() => {
@@ -306,7 +286,6 @@ describe('SignalRService', () => {
         subscriber2Called = true;
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).deleteRelationSubject.next(mockEvent);
 
       setTimeout(() => {

@@ -19,7 +19,7 @@ import {EngineType} from './enums/engine-type.enum';
 import {ListItemModel} from './models/list-item.model';
 import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
 import {ApiService} from './services/api.service';
-import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
+import {SignalRService} from './services/signalr.service';
 import {NotificationService} from './services/notification.service';
 import {finalize, forkJoin, of, Subscription} from 'rxjs';
 import {RelationApiModel} from './models/api/relation.api-model';
@@ -33,20 +33,9 @@ import {getRelationTypeLabel, makeRelationKey, makeRelationValue, parseRelationV
 import {isListOptionDisabled, isNumber, rowTrackByFn} from './utils/list.util';
 import {createAnchorId} from './utils/dom.util';
 import {downloadBlobAsFile, extractFilenameFromContentDisposition} from './utils/file.util';
-
-
-// Types for grouped listbox
-interface ItemOption {
-  label: string;
-  value: string | null;
-  disabled?: boolean;
-  __placeholder?: boolean;
-}
-
-interface Group {
-  label: string;
-  items: ItemOption[];
-}
+import {CreateOrUpdateRelationEventModel} from './models/create-or-update-relation-event.model';
+import {ItemOptionModel} from './models/item-option.model';
+import {GroupModel} from './models/group.model';
 
 type HubStatus = 'connecting' | 'connected' | 'failed';
 
@@ -133,8 +122,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Listbox (reactive) ─────────────────────────────────────────
   readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
-  private allGroups: Group[] = [];
-  groupedOptions: Group[] = [];
+  private allGroups: GroupModel[] = [];
+  groupedOptions: GroupModel[] = [];
   listFilter = '';
 
   private lastListSelection: string | null = null;
@@ -343,17 +332,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Build options & filter ─────────────────────────────────────
   private rebuildGroupsFromApi(): void {
-    const tables: ItemOption[] = this.tableItems().map((it) => ({
+    const tables: ItemOptionModel[] = this.tableItems().map((it) => ({
       label: it.label,
       value: makeRelationValue(RelationType.Table, it.id),
     }));
 
-    const views: ItemOption[] = this.viewItems().map((it) => ({
+    const views: ItemOptionModel[] = this.viewItems().map((it) => ({
       label: it.label,
       value: makeRelationValue(RelationType.View, it.id),
     }));
 
-    const groups: Group[] = [{label: 'Tabellen', items: tables}];
+    const groups: GroupModel[] = [{label: 'Tabellen', items: tables}];
     if (!this.isExcel()) groups.push({label: 'Sichten', items: views});
 
     this.allGroups = groups;
@@ -396,7 +385,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ── API loading for tables & views ─────────────────────────────
-  private loadTablesAndViews(createRelationEvent?: CreateOrUpdateRelationEvent): void {
+  private loadTablesAndViews(createRelationEvent?: CreateOrUpdateRelationEventModel): void {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();

@@ -3,17 +3,8 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable, Subject } from 'rxjs';
 import { RelationType } from '../enums/relation-type.enum';
-
-export interface CreateOrUpdateRelationEvent {
-  relationType: RelationType;
-  name: string;
-  created: boolean;
-}
-
-export interface DeleteRelationEvent {
-  relationType: RelationType;
-  name: string;
-}
+import { CreateOrUpdateRelationEventModel } from '../models/create-or-update-relation-event.model';
+import { DeleteRelationEventModel } from '../models/delete-relation-event.model';
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
@@ -22,8 +13,8 @@ export class SignalRService {
   private startPromise?: Promise<void>;
 
   // Domain events
-  private createOrUpdateRelationSubject = new Subject<CreateOrUpdateRelationEvent>();
-  private deleteRelationSubject = new Subject<DeleteRelationEvent>();
+  private createOrUpdateRelationSubject = new Subject<CreateOrUpdateRelationEventModel>();
+  private deleteRelationSubject = new Subject<DeleteRelationEventModel>();
 
   // Connection lifecycle events
   private connectionLostSubject = new Subject<void>(); // initial start failure or a connected hub finally closes
@@ -31,11 +22,11 @@ export class SignalRService {
   private reconnectedSubject = new Subject<void>(); // when SignalR has reconnected
 
   /** Emits when the backend confirms a created/updated table/view */
-  readonly onCreateOrUpdateRelation$: Observable<CreateOrUpdateRelationEvent> =
+  readonly onCreateOrUpdateRelation$: Observable<CreateOrUpdateRelationEventModel> =
     this.createOrUpdateRelationSubject.asObservable();
 
   /** Emits when the backend confirms a deleted table/view */
-  readonly onDeleteRelation$: Observable<DeleteRelationEvent> = this.deleteRelationSubject.asObservable();
+  readonly onDeleteRelation$: Observable<DeleteRelationEventModel> = this.deleteRelationSubject.asObservable();
 
   /** Emits when the connection is gone and the UI should prompt to reload */
   readonly onConnectionLost$: Observable<void> = this.connectionLostSubject.asObservable();
