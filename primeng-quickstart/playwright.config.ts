@@ -2,8 +2,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // HEADLESS=1 (or "true"/"yes") -> run headless
-const isHeadless =
-  ['1', 'true', 'yes'].includes(String(process.env["HEADLESS"] ?? '').toLowerCase());
+const isHeadless = ['1', 'true', 'yes'].includes(String(process.env['HEADLESS'] ?? '').toLowerCase());
 
 export default defineConfig({
   testDir: './e2e',
@@ -14,10 +13,7 @@ export default defineConfig({
   retries: 0,
 
   // Show progress in the terminal; also generate HTML report without opening it
-  reporter: [
-    ['list'],
-    ['html', { open: 'never' }],
-  ],
+  reporter: [['list'], ['html', { open: 'never' }]],
 
   use: {
     baseURL: process.env['PLAYWRIGHT_TEST_BASE_URL'] ?? 'http://localhost:4200',

@@ -1,8 +1,8 @@
 // file: src/app/services/signalr.service.ts
-import {Injectable} from '@angular/core';
+import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import {Observable, Subject} from 'rxjs';
-import {RelationType} from '../enums/relation-type.enum';
+import { Observable, Subject } from 'rxjs';
+import { RelationType } from '../enums/relation-type.enum';
 
 export interface CreateOrUpdateRelationEvent {
   relationType: RelationType;
@@ -15,7 +15,7 @@ export interface DeleteRelationEvent {
   name: string;
 }
 
-@Injectable({providedIn: 'root'})
+@Injectable({ providedIn: 'root' })
 export class SignalRService {
   private hub?: signalR.HubConnection;
   private handlersBound = false;
@@ -26,17 +26,16 @@ export class SignalRService {
   private deleteRelationSubject = new Subject<DeleteRelationEvent>();
 
   // Connection lifecycle events
-  private connectionLostSubject = new Subject<void>();     // initial start failure or a connected hub finally closes
-  private reconnectingSubject = new Subject<void>();       // when SignalR enters reconnecting state
-  private reconnectedSubject = new Subject<void>();        // when SignalR has reconnected
+  private connectionLostSubject = new Subject<void>(); // initial start failure or a connected hub finally closes
+  private reconnectingSubject = new Subject<void>(); // when SignalR enters reconnecting state
+  private reconnectedSubject = new Subject<void>(); // when SignalR has reconnected
 
   /** Emits when the backend confirms a created/updated table/view */
   readonly onCreateOrUpdateRelation$: Observable<CreateOrUpdateRelationEvent> =
     this.createOrUpdateRelationSubject.asObservable();
 
   /** Emits when the backend confirms a deleted table/view */
-  readonly onDeleteRelation$: Observable<DeleteRelationEvent> =
-    this.deleteRelationSubject.asObservable();
+  readonly onDeleteRelation$: Observable<DeleteRelationEvent> = this.deleteRelationSubject.asObservable();
 
   /** Emits when the connection is gone and the UI should prompt to reload */
   readonly onConnectionLost$: Observable<void> = this.connectionLostSubject.asObservable();
@@ -63,26 +62,22 @@ export class SignalRService {
 
       // Canonical event (create or update)
       this.hub.on('CreateOrUpdateRelation', (payload: any) => {
-        const relationType = (payload?.relationType ?? payload?.type ?? '')
-          .toString()
-          .toLowerCase() as RelationType;
+        const relationType = (payload?.relationType ?? payload?.type ?? '').toString().toLowerCase() as RelationType;
         const name = (payload?.name ?? '').toString();
         const created = !!payload?.created;
 
         if ((relationType === 'table' || relationType === 'view') && name) {
-          this.createOrUpdateRelationSubject.next({relationType, name, created});
+          this.createOrUpdateRelationSubject.next({ relationType, name, created });
         }
       });
 
       // Delete event
       this.hub.on('DeleteRelation', (payload: any) => {
-        const relationType = (payload?.relationType ?? payload?.type ?? '')
-          .toString()
-          .toLowerCase() as RelationType;
+        const relationType = (payload?.relationType ?? payload?.type ?? '').toString().toLowerCase() as RelationType;
         const name = (payload?.name ?? '').toString();
 
         if ((relationType === 'table' || relationType === 'view') && name) {
-          this.deleteRelationSubject.next({relationType, name});
+          this.deleteRelationSubject.next({ relationType, name });
         }
       });
 
@@ -109,8 +104,7 @@ export class SignalRService {
 
     this.ensureHub();
 
-    this.startPromise = this.hub!
-      .start()
+    this.startPromise = this.hub!.start()
       .catch((err) => {
         console.error('SignalR start/negotiate failed', err);
         this.connectionLostSubject.next(); // notify UI immediately

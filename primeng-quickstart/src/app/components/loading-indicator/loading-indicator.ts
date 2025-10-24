@@ -1,11 +1,9 @@
 import { Component } from '@angular/core';
-import {ProgressSpinner} from 'primeng/progressspinner';
+import { ProgressSpinner } from 'primeng/progressspinner';
 
 @Component({
   selector: 'app-loading-indicator',
-  imports: [
-    ProgressSpinner
-  ],
+  imports: [ProgressSpinner],
   templateUrl: './loading-indicator.html',
   styleUrl: './loading-indicator.scss',
 })
