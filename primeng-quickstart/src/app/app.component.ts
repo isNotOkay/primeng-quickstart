@@ -1,9 +1,10 @@
 // file: src/app/app.component.ts
 import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { NgClass } from '@angular/common';
+import { NgClass, ViewportScroller } from '@angular/common';
 
 import { Table, TableModule } from 'primeng/table';
+import { Listbox } from 'primeng/listbox';
 import { SplitterModule } from 'primeng/splitter';
 import { SelectModule } from 'primeng/select';
 import { ListboxModule } from 'primeng/listbox';
@@ -73,6 +74,7 @@ type HubStatus = 'connecting' | 'connected' | 'failed';
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(Table) private dataTable?: Table;
   @ViewChild('filterInput') private filterInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(Listbox) private listbox?: Listbox;
   private readonly DEFAULT_COL_PX = 80;
 
   protected readonly EngineType = EngineType;
@@ -109,6 +111,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly tableState = inject(TableStateService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly viewportScroller = inject(ViewportScroller);
 
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
@@ -664,6 +667,47 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listControl.setValue(value, { emitEvent });
     this.programmaticListSet = false;
     this.lastListSelection = value;
+    
+    // Scroll to the selected item in the listbox
+    if (value !== null) {
+      this.scrollToSelectedListItem();
+    }
+  }
+
+  private scrollToSelectedListItem(): void {
+    // Use setTimeout to ensure the DOM has been updated
+    setTimeout(() => {
+      if (!this.listbox) return;
+      
+      const listboxEl = (this.listbox as { el?: ElementRef }).el?.nativeElement as HTMLElement | undefined;
+      if (!listboxEl) return;
+      
+      // Find the selected item in the listbox
+      const selectedItem = listboxEl.querySelector('.p-listbox-option.p-listbox-option-selected') as HTMLElement;
+      if (!selectedItem) return;
+      
+      // Get the scrollable container (the listbox list)
+      const listContainer = listboxEl.querySelector('.p-listbox-list') as HTMLElement;
+      if (!listContainer) return;
+      
+      // Calculate the position to scroll to
+      const itemTop = selectedItem.offsetTop;
+      const itemHeight = selectedItem.offsetHeight;
+      const containerHeight = listContainer.clientHeight;
+      const containerScrollTop = listContainer.scrollTop;
+      
+      // Check if the item is fully visible
+      const isItemVisible = 
+        itemTop >= containerScrollTop && 
+        itemTop + itemHeight <= containerScrollTop + containerHeight;
+      
+      // Scroll only if the item is not fully visible
+      if (!isItemVisible) {
+        // Center the item in the view
+        const scrollTo = itemTop - containerHeight / 2 + itemHeight / 2;
+        listContainer.scrollTop = Math.max(0, scrollTo);
+      }
+    }, 100);
   }
 
   private toastOnceForRelation(kind: string, event: { name: string; relationType: RelationType; created: boolean }) {
