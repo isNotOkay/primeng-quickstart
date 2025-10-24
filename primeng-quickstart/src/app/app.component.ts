@@ -76,6 +76,7 @@ export class AppComponent implements OnInit, OnDestroy {
   @ViewChild('filterInput') private filterInput?: ElementRef<HTMLInputElement>;
   @ViewChild(Listbox) private listbox?: Listbox;
   private readonly DEFAULT_COL_PX = 80;
+  private readonly DOM_UPDATE_DELAY_MS = 100;
 
   protected readonly EngineType = EngineType;
   readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
@@ -674,18 +675,22 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private scrollToSelectedListItem(): void {
-    // Use setTimeout to ensure the DOM has been updated
+    // Use setTimeout to ensure the DOM has been updated after the selection change
     setTimeout(() => {
       if (!this.listbox) return;
       
+      // Access the native element through PrimeNG's internal structure
+      // Note: This relies on PrimeNG's Listbox component having an 'el' property with ElementRef
       const listboxEl = (this.listbox as { el?: ElementRef }).el?.nativeElement as HTMLElement | undefined;
       if (!listboxEl) return;
       
-      // Find the selected item in the listbox
+      // Find the selected item using PrimeNG's CSS classes
+      // Note: These class names are part of PrimeNG's public API and should be stable across versions
       const selectedItem = listboxEl.querySelector('.p-listbox-option.p-listbox-option-selected') as HTMLElement;
       if (!selectedItem) return;
       
       // Get the scrollable container (the listbox list)
+      // Note: Uses PrimeNG's CSS class for the list container
       const listContainer = listboxEl.querySelector('.p-listbox-list') as HTMLElement;
       if (!listContainer) return;
       
@@ -706,7 +711,7 @@ export class AppComponent implements OnInit, OnDestroy {
         const scrollTo = itemTop - containerHeight / 2 + itemHeight / 2;
         listContainer.scrollTop = Math.max(0, scrollTo);
       }
-    }, 100);
+    }, this.DOM_UPDATE_DELAY_MS);
   }
 
   private toastOnceForRelation(kind: string, event: { name: string; relationType: RelationType; created: boolean }) {
