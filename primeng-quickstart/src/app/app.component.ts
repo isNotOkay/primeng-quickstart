@@ -1,34 +1,34 @@
 // file: src/app/app.component.ts
-import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { NgClass } from '@angular/common';
+import {ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild} from '@angular/core';
+import {FormControl, FormsModule, ReactiveFormsModule} from '@angular/forms';
+import {NgClass, ViewportScroller} from '@angular/common';
 
-import { Table, TableModule } from 'primeng/table';
-import { SplitterModule } from 'primeng/splitter';
-import { SelectModule } from 'primeng/select';
-import { ListboxModule } from 'primeng/listbox';
-import { InputTextModule } from 'primeng/inputtext';
-import { Toolbar } from 'primeng/toolbar';
-import { Button, ButtonDirective } from 'primeng/button';
-import { IconField } from 'primeng/iconfield';
-import { InputIcon } from 'primeng/inputicon';
-import { Toast } from 'primeng/toast';
-import { ConfirmDialog } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
+import {Table, TableModule} from 'primeng/table';
+import {SplitterModule} from 'primeng/splitter';
+import {SelectModule} from 'primeng/select';
+import {ListboxModule} from 'primeng/listbox';
+import {InputTextModule} from 'primeng/inputtext';
+import {Toolbar} from 'primeng/toolbar';
+import {Button, ButtonDirective} from 'primeng/button';
+import {IconField} from 'primeng/iconfield';
+import {InputIcon} from 'primeng/inputicon';
+import {Toast} from 'primeng/toast';
+import {ConfirmDialog} from 'primeng/confirmdialog';
+import {ConfirmationService} from 'primeng/api';
 
-import { EngineType } from './enums/engine-type.enum';
-import { ListItemModel } from './models/list-item.model';
-import { DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE } from './constants/api-params.constants';
-import { ApiService } from './services/api.service';
-import { CreateOrUpdateRelationEvent, SignalRService } from './services/signalr.service';
-import { NotificationService } from './services/notification.service';
-import { finalize, forkJoin, of, Subscription } from 'rxjs';
-import { RelationApiModel } from './models/api/relation.api-model';
-import { RelationType } from './enums/relation-type.enum';
-import { PagedResultApiModel } from './models/api/paged-result.api-model';
-import { RowModel } from './models/row.model';
-import { LoadingIndicator } from './components/loading-indicator/loading-indicator';
-import { TableStateService } from './services/table-state.service';
+import {EngineType} from './enums/engine-type.enum';
+import {ListItemModel} from './models/list-item.model';
+import {DEFAULT_PAGE_INDEX, DEFAULT_PAGE_SIZE} from './constants/api-params.constants';
+import {ApiService} from './services/api.service';
+import {CreateOrUpdateRelationEvent, SignalRService} from './services/signalr.service';
+import {NotificationService} from './services/notification.service';
+import {finalize, forkJoin, of, Subscription} from 'rxjs';
+import {RelationApiModel} from './models/api/relation.api-model';
+import {RelationType} from './enums/relation-type.enum';
+import {PagedResultApiModel} from './models/api/paged-result.api-model';
+import {RowModel} from './models/row.model';
+import {LoadingIndicator} from './components/loading-indicator/loading-indicator';
+import {TableStateService} from './services/table-state.service';
 
 // Types for grouped listbox
 interface ItemOption {
@@ -76,7 +76,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly DEFAULT_COL_PX = 80;
 
   protected readonly EngineType = EngineType;
-  readonly engineControl = new FormControl<EngineType | null>(null, { nonNullable: false });
+  readonly engineControl = new FormControl<EngineType | null>(null, {nonNullable: false});
 
   protected isExcel(): boolean {
     return this.engineControl.value === EngineType.Excel;
@@ -109,6 +109,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly tableState = inject(TableStateService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly viewport = inject(ViewportScroller); // for page-level scrolling
 
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
@@ -121,12 +122,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // ── Datenquelle select ─────────────────────────────────────────
   dataSources: { label: string; value: EngineType }[] = [
-    { label: 'SQLite', value: EngineType.Sqlite },
-    { label: 'Excel', value: EngineType.Excel },
+    {label: 'SQLite', value: EngineType.Sqlite},
+    {label: 'Excel', value: EngineType.Excel},
   ];
 
   // ── Listbox (reactive) ─────────────────────────────────────────
-  readonly listControl = new FormControl<string | null>(null, { nonNullable: false });
+  readonly listControl = new FormControl<string | null>(null, {nonNullable: false});
   private allGroups: Group[] = [];
   groupedOptions: Group[] = [];
   listFilter = '';
@@ -135,7 +136,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private programmaticListSet = false;
   private recentRelationToasts = new Map<string, number>();
 
-  constructor() {}
+  constructor() {
+  }
 
   ngOnInit() {
     this.subscriptions.push(
@@ -187,7 +189,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
         this.apiService.getEngine().subscribe({
           next: (dto) => {
-            this.engineControl.setValue(dto.engine, { emitEvent: false });
+            this.engineControl.setValue(dto.engine, {emitEvent: false});
             this.loadedTablesAndViews.set(false);
             this.clearSelectedListItem();
             this.loadTablesAndViews();
@@ -199,7 +201,8 @@ export class AppComponent implements OnInit, OnDestroy {
           },
         });
       })
-      .catch(() => {});
+      .catch(() => {
+      });
 
     // Persist engine changes + refresh lists
     this.engineControl.valueChanges.subscribe((engine) => {
@@ -236,7 +239,7 @@ export class AppComponent implements OnInit, OnDestroy {
           return;
         }
         if (this.lastListSelection) {
-          this.listControl.setValue(this.lastListSelection, { emitEvent: false });
+          this.listControl.setValue(this.lastListSelection, {emitEvent: false});
         }
         return;
       }
@@ -245,14 +248,15 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const sel = this.parseSelection(val);
       const item = this.findInLists(sel.type, sel.id);
-      if (item) this.selectListItem(item);
+      if (item) this.selectListItem(item); // scrolling happens inside selectListItem
     });
   }
 
   ngOnDestroy(): void {
     this.loadRowsSubscription?.unsubscribe();
     for (const s of this.subscriptions) s.unsubscribe();
-    this.signalRService.stop().catch(() => {});
+    this.signalRService.stop().catch(() => {
+    });
   }
 
   protected onDownload(): void {
@@ -299,9 +303,7 @@ export class AppComponent implements OnInit, OnDestroy {
       accept: () => {
         this.apiService.deleteRelation(sel.relationType, sel.id).subscribe({
           next: () => {
-            // ✅ Do NOT show a local success toast here.
-            // Rely on the SignalR onDeleteRelation$ handler to show the single info toast.
-
+            // rely on SignalR toast
             this.setListSelection(null, false);
             this.clearSelectedListItem();
           },
@@ -336,8 +338,8 @@ export class AppComponent implements OnInit, OnDestroy {
       value: this.makeValue(RelationType.View, it.id),
     }));
 
-    const groups: Group[] = [{ label: 'Tabellen', items: tables }];
-    if (!this.isExcel()) groups.push({ label: 'Sichten', items: views });
+    const groups: Group[] = [{label: 'Tabellen', items: tables}];
+    if (!this.isExcel()) groups.push({label: 'Sichten', items: views});
 
     this.allGroups = groups;
     this.applyFilter(this.listFilter);
@@ -364,9 +366,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
       const items = matched.length
         ? matched
-        : [{ label: emptyLabel, value: `__placeholder__:${g.label}`, disabled: true, __placeholder: true }];
+        : [{label: emptyLabel, value: `__placeholder__:${g.label}`, disabled: true, __placeholder: true}];
 
-      return { label: g.label, items };
+      return {label: g.label, items};
     });
   }
 
@@ -390,7 +392,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.listsLoading.set(true);
 
     const tables$ = this.apiService.loadTables();
-    const views$ = this.isExcel() ? of({ items: [] as RelationApiModel[] }) : this.apiService.loadViews();
+    const views$ = this.isExcel() ? of({items: [] as RelationApiModel[]}) : this.apiService.loadViews();
 
     forkJoin([tables$, views$]).subscribe({
       next: ([tablesResponse, viewsResponse]) => {
@@ -445,6 +447,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.refreshColumnsForCurrentSelection();
     this.loadTableData();
+
+    // Scroll the selected item into view within the listbox (and the page if needed)
+    setTimeout(() => this.scrollToSelectedListItem(), 0);
   }
 
   private updateColumnNames(): void {
@@ -494,7 +499,7 @@ export class AppComponent implements OnInit, OnDestroy {
         const cols = found?.columnNames ?? [];
         if (cols.length) {
           this.columnNames.set(cols);
-          const updated: ListItemModel = { ...sel, columnNames: cols };
+          const updated: ListItemModel = {...sel, columnNames: cols};
           this.selectedListItem.set(updated);
           if (sel.relationType === RelationType.View) {
             this.viewItems.set(this.viewItems().map((i) => (i.id === sel.id ? updated : i)));
@@ -656,12 +661,12 @@ export class AppComponent implements OnInit, OnDestroy {
     const [typeStr, ...rest] = v.split('|');
     const id = rest.join('|');
     const type = typeStr === RelationType.View ? RelationType.View : RelationType.Table;
-    return { type, id };
+    return {type, id};
   }
 
   private setListSelection(value: string | null, emitEvent = false) {
     this.programmaticListSet = true;
-    this.listControl.setValue(value, { emitEvent });
+    this.listControl.setValue(value, {emitEvent});
     this.programmaticListSet = false;
     this.lastListSelection = value;
   }
@@ -690,5 +695,36 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private relationTypeLabel(t: RelationType) {
     return t === RelationType.View ? 'Sicht' : 'Tabelle';
+  }
+
+  // ── Viewport/listbox scroll helpers ────────────────────────────
+  /** Creates a stable DOM id for a list item value like "Table|Orders" */
+  protected anchorIdFromValue(value: string | null | undefined): string | null {
+    if (!value) return null;
+    return `list-item-${value.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  }
+
+  private anchorIdForCurrentSelection(): string | null {
+    const sel = this.selectedListItem();
+    if (!sel) return null;
+    return this.anchorIdFromValue(this.makeValue(sel.relationType, sel.id));
+  }
+
+  /** Ensures the selected item is visible inside the listbox and (if needed) on the page. */
+  private scrollToSelectedListItem(): void {
+    const id = this.anchorIdForCurrentSelection();
+    if (!id) return;
+
+    const el = document.getElementById(id) as HTMLElement | null;
+    if (!el) return;
+
+    el.scrollIntoView();
+
+    // 2) If the element is outside the browser viewport (left panel off-screen), bring the page to it.
+    const rect = el.getBoundingClientRect();
+    const withinViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    if (!withinViewport) {
+      this.viewport.scrollToAnchor(id);
+    }
   }
 }

@@ -1,3 +1,4 @@
+<!-- file: src/app/app.component.html -->
 <p-toast position="bottom-center"></p-toast>
 
 <p-confirmdialog
@@ -13,7 +14,7 @@
 @if (
   hubStatus() === 'connecting' ||
   (hubStatus() === 'connected' && !loadedTablesAndViews() && tableItems().length === 0 && viewItems().length === 0)
-) {
+  ) {
   <div class="loading-container">
     <app-loading-indicator></app-loading-indicator>
   </div>
@@ -102,7 +103,10 @@
               </ng-template>
 
               <ng-template pTemplate="item" let-item>
-                <div [ngClass]="item.__placeholder ? 'listbox-item-placeholder' : 'listbox-item-normal'">
+                <div
+                  [ngClass]="item.__placeholder ? 'listbox-item-placeholder' : 'listbox-item-normal'"
+                  [attr.id]="!item.__placeholder ? anchorIdFromValue(item.value) : null"
+                >
                   {{ item.label }}
                 </div>
               </ng-template>
