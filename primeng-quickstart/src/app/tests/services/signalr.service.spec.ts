@@ -1,7 +1,8 @@
-import { TestBed } from '@angular/core/testing';
-import { SignalRService, CreateOrUpdateRelationEvent, DeleteRelationEvent } from '../../services/signalr.service';
-import { RelationType } from '../../enums/relation-type.enum';
+import {TestBed} from '@angular/core/testing';
+import {RelationType} from '../../enums/relation-type.enum';
 import * as signalR from '@microsoft/signalr';
+import {CreateOrUpdateRelationEventModel} from '../../models/create-or-update-relation-event.model';
+import {SignalRService} from '../../services/signalr.service';
 
 describe('SignalRService', () => {
   let service: SignalRService;
@@ -161,11 +162,14 @@ describe('SignalRService', () => {
 
       // Call start multiple times without awaiting
       // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise1 = service.startAndWait().catch(() => {});
+      const promise1 = service.startAndWait().catch(() => {
+      });
       // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise2 = service.startAndWait().catch(() => {});
+      const promise2 = service.startAndWait().catch(() => {
+      });
       // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const promise3 = service.startAndWait().catch(() => {});
+      const promise3 = service.startAndWait().catch(() => {
+      });
 
       // All promises should resolve/reject
       await Promise.allSettled([promise1, promise2, promise3]);
@@ -177,7 +181,7 @@ describe('SignalRService', () => {
 
   describe('event handling', () => {
     it('should emit CreateOrUpdateRelation event with correct data for table', (done) => {
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.Table,
         name: 'Users',
         created: true,
@@ -196,7 +200,7 @@ describe('SignalRService', () => {
     });
 
     it('should emit CreateOrUpdateRelation event with correct data for view', (done) => {
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.View,
         name: 'UserView',
         created: false,
@@ -214,9 +218,10 @@ describe('SignalRService', () => {
     });
 
     it('should emit DeleteRelation event with correct data', (done) => {
-      const mockEvent: DeleteRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.Table,
         name: 'Users',
+        created: true
       };
 
       service.onDeleteRelation$.subscribe((event) => {
@@ -265,7 +270,7 @@ describe('SignalRService', () => {
       let subscriber1Called = false;
       let subscriber2Called = false;
 
-      const mockEvent: CreateOrUpdateRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.Table,
         name: 'Test',
         created: true,
@@ -293,9 +298,10 @@ describe('SignalRService', () => {
       let subscriber1Called = false;
       let subscriber2Called = false;
 
-      const mockEvent: DeleteRelationEvent = {
+      const mockEvent: CreateOrUpdateRelationEventModel = {
         relationType: RelationType.View,
         name: 'Test',
+        created: true
       };
 
       service.onDeleteRelation$.subscribe(() => {
