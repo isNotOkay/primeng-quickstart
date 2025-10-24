@@ -88,6 +88,7 @@ describe('SignalRService', () => {
       };
 
       // Set the private hub property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
 
       // Now stop should work
@@ -105,16 +106,14 @@ describe('SignalRService', () => {
       };
 
       // Set the private hub property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
 
       await expectAsync(service.startAndWait()).toBeResolved();
     });
 
     it('should emit onConnectionLost$ when start fails', (done) => {
-      let connectionLostEmitted = false;
-
       service.onConnectionLost$.subscribe(() => {
-        connectionLostEmitted = true;
         // Clean up to prevent actual connection attempts
         service.stop();
         done();
@@ -132,7 +131,9 @@ describe('SignalRService', () => {
       };
 
       // Set the private hub property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).handlersBound = true;
 
       service.startAndWait().catch(() => {
@@ -153,12 +154,17 @@ describe('SignalRService', () => {
       };
 
       // Set the private hub property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).hub = mockHub;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).handlersBound = true;
 
       // Call start multiple times without awaiting
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const promise1 = service.startAndWait().catch(() => {});
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const promise2 = service.startAndWait().catch(() => {});
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const promise3 = service.startAndWait().catch(() => {});
 
       // All promises should resolve/reject
@@ -185,6 +191,7 @@ describe('SignalRService', () => {
       });
 
       // Trigger the event by accessing the private subject
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
     });
 
@@ -202,6 +209,7 @@ describe('SignalRService', () => {
         done();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
     });
 
@@ -217,6 +225,7 @@ describe('SignalRService', () => {
         done();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).deleteRelationSubject.next(mockEvent);
     });
 
@@ -226,6 +235,7 @@ describe('SignalRService', () => {
         done();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).connectionLostSubject.next();
     });
 
@@ -235,6 +245,7 @@ describe('SignalRService', () => {
         done();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).reconnectingSubject.next();
     });
 
@@ -244,6 +255,7 @@ describe('SignalRService', () => {
         done();
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).reconnectedSubject.next();
     });
   });
@@ -267,6 +279,7 @@ describe('SignalRService', () => {
         subscriber2Called = true;
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).createOrUpdateRelationSubject.next(mockEvent);
 
       setTimeout(() => {
@@ -293,6 +306,7 @@ describe('SignalRService', () => {
         subscriber2Called = true;
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (service as any).deleteRelationSubject.next(mockEvent);
 
       setTimeout(() => {
