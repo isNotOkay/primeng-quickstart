@@ -1,22 +1,22 @@
-import {ApplicationConfig, provideZoneChangeDetection} from '@angular/core';
-import {providePrimeNG} from 'primeng/config';
-import {provideAnimationsAsync} from '@angular/platform-browser/animations/async';
+import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { providePrimeNG } from 'primeng/config';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import Aura from '@primeuix/themes/aura';
-import {provideHttpClient} from '@angular/common/http';
-import {MessageService} from 'primeng/api';
-import {definePreset} from '@primeuix/themes';
+import { provideHttpClient } from '@angular/common/http';
+import { MessageService } from 'primeng/api';
+import { definePreset } from '@primeuix/themes';
 
 export const MyPreset = definePreset(Aura, {
   components: {
     toast: {
       css: `
         .p-toast { --p-toast-width: 40vw; }
-      `
+      `,
     },
     datatable: {
       bodyCell: {
-        sm: { padding: '0.25rem 0.5rem' }
-      }
+        sm: { padding: '0.25rem 0.5rem' },
+      },
     },
   },
   semantic: {
@@ -31,9 +31,9 @@ export const MyPreset = definePreset(Aura, {
       700: '{blue.700}',
       800: '{blue.800}',
       900: '{blue.900}',
-      950: '{blue.950}'
-    }
-  }
+      950: '{blue.950}',
+    },
+  },
 });
 
 export const appConfig: ApplicationConfig = {
@@ -42,11 +42,11 @@ export const appConfig: ApplicationConfig = {
     providePrimeNG({
       theme: {
         preset: MyPreset,
-        options: {darkModeSelector: '.p-dark'},
+        options: { darkModeSelector: '.p-dark' },
       },
     }),
-    provideZoneChangeDetection({eventCoalescing: true}),
+    provideZoneChangeDetection({ eventCoalescing: true }),
     provideHttpClient(),
-    MessageService
+    MessageService,
   ],
 };

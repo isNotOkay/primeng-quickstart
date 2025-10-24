@@ -42,7 +42,7 @@ export default async function globalTeardown() {
       await execFileAsync(
         'powershell.exe',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', excelPs1, '-Prefix', prefix],
-        { windowsHide: true, env }
+        { windowsHide: true, env },
       );
       console.log('[e2e] Excel cleanup finished.');
     } catch (err) {

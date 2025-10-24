@@ -1,6 +1,5 @@
 <p-toast position="bottom-center"></p-toast>
 
-<!-- Non-cancelable ConfirmDialog shown when SignalR is lost or start fails -->
 <p-confirmdialog
   [key]="'conn-lost'"
   [rejectVisible]="false"
@@ -9,28 +8,20 @@
   [dismissableMask]="false"
 ></p-confirmdialog>
 
-<!-- Generic confirm dialog (for actions like Delete) -->
 <p-confirmdialog></p-confirmdialog>
 
-<!-- Boot gating:
-     - Full-page loader ONLY while the hub is connecting OR the very first lists load
-     - After first load, keep the UI visible and overlay spinners locally while reloading -->
-@if (hubStatus() === 'connecting' ||
-(hubStatus() === 'connected' &&
-  !loadedTablesAndViews() &&
-  tableItems().length === 0 &&
-  viewItems().length === 0)) {
-  <div style="height: 100vh; width: 100%; display: grid; place-items: center">
+@if (
+  hubStatus() === 'connecting' ||
+  (hubStatus() === 'connected' && !loadedTablesAndViews() && tableItems().length === 0 && viewItems().length === 0)
+) {
+  <div class="loading-container">
     <app-loading-indicator></app-loading-indicator>
   </div>
 } @else if (hubStatus() === 'connected') {
-
-  <!-- Full-page flex column: toolbar on top, splitter fills the rest -->
-  <div style="height: 100vh; width: 100%; display: flex; flex-direction: column">
-    <!-- Global toolbar -->
+  <div class="main-container">
     <p-toolbar>
       <ng-template pTemplate="start">
-        <div style="display: flex; align-items: center; gap: 0.5rem">
+        <div class="toolbar-start">
           <p-select
             size="small"
             inputId="dataSource"
@@ -46,26 +37,25 @@
       </ng-template>
 
       <ng-template pTemplate="end">
-        <p-button label="Download" icon="pi pi-download" severity="secondary" variant="outlined" size="small"
-                  (click)="onDownload()"/>
+        <p-button
+          label="Download"
+          icon="pi pi-download"
+          severity="secondary"
+          variant="outlined"
+          size="small"
+          (click)="onDownload()"
+        />
       </ng-template>
     </p-toolbar>
 
     <div class="splitter-wrapper">
-      <p-splitter
-        [style]="{ height: '100%', width: '100%' }"
-        [panelSizes]="[25, 75]"
-        [minSizes]="[15, 10]"
-        layout="horizontal"
-      >
-        <!-- Left panel -->
+      <p-splitter [panelSizes]="[25, 75]" [minSizes]="[15, 10]" layout="horizontal">
         <ng-template #panel>
-          <div style="display: flex; flex-direction: column; width: 100%; height: 100%; position: relative">
-            <!-- Clearable search -->
-            <div style="margin-bottom: 0.5rem; padding: 10px 10px 0 10px">
-              <div class="search-clearable" style="position: relative; width: 100%">
-                <p-iconfield iconPosition="left" class="w-full" >
-                  <p-inputicon styleClass="pi pi-search" ></p-inputicon>
+          <div class="left-panel-container">
+            <div class="search-container">
+              <div class="search-clearable">
+                <p-iconfield iconPosition="left" class="w-full">
+                  <p-inputicon styleClass="pi pi-search"></p-inputicon>
 
                   <input
                     #filterInput
@@ -76,8 +66,7 @@
                     (ngModelChange)="applyFilter($event)"
                     type="text"
                     placeholder="Suchen…"
-                    class="w-full"
-                    style="padding-right: 2.25rem"
+                    class="w-full search-input"
                   />
                 </p-iconfield>
 
@@ -85,16 +74,9 @@
                   <button
                     type="button"
                     pButton
-                    class="p-button-text p-button-plain p-button-rounded p-button-icon-only"
+                    class="p-button-text p-button-plain p-button-rounded p-button-icon-only clear-button"
                     (click)="clearSearch()"
                     aria-label="Suche löschen"
-                    style="
-                      position: absolute;
-                      right: .35rem;
-                      top: 50%;
-                      transform: translateY(-50%);
-                      width: 1.75rem;
-                      height: 1.75rem;"
                   >
                     <span class="p-button-icon pi pi-times"></span>
                   </button>
@@ -102,7 +84,6 @@
               </div>
             </div>
 
-            <!-- Grouped Listbox -->
             <p-listbox
               [group]="true"
               [options]="groupedOptions"
@@ -112,47 +93,35 @@
               optionLabel="label"
               optionValue="value"
               [optionDisabled]="isOptionDisabled"
-              [style]="{ width: '100%', 'flex-grow': '1', overflow: 'auto', border: 'none', boxShadow: 'none' }"
-              [listStyle]="{ overflow: 'auto', 'max-height': '100%' }"
               styleClass="left-listbox"
             >
               <ng-template pTemplate="group" let-group>
-                <div
-                  style="font-weight: 700; color: var(--p-primary-color); text-transform: uppercase; letter-spacing: 0.02em"
-                >
+                <div class="group-header">
                   {{ group.label }}
                 </div>
               </ng-template>
 
               <ng-template pTemplate="item" let-item>
-                <div
-                  [style.padding-left]="item.__placeholder ? '.25rem' : '1rem'"
-                  [style.fontStyle]="item.__placeholder ? 'italic' : null"
-                  [style.opacity]="item.__placeholder ? 0.75 : 1"
-                >
+                <div [ngClass]="item.__placeholder ? 'listbox-item-placeholder' : 'listbox-item-normal'">
                   {{ item.label }}
                 </div>
               </ng-template>
             </p-listbox>
 
-            <!-- Overlay spinner while lists are refreshing after initial boot -->
             @if (listsLoading() && (tableItems().length > 0 || viewItems().length > 0)) {
               <app-loading-indicator></app-loading-indicator>
             }
           </div>
         </ng-template>
 
-        <!-- Right panel -->
         <ng-template #panel>
-          <div class="right-panel" style="display: flex; flex-direction: column; height: 100%">
+          <div class="right-panel">
             @if (renderTable()) {
-
-              <!-- Nothing selected → neutral message (outside of table) -->
               @if (!selectedListItem()) {
-                <div style="height: 100%; display: grid; place-items: center; text-align: center; padding: 1rem">
+                <div class="empty-state-container">
                   <div>
-                    <i class="pi pi-table" style="font-size: 1.35rem; opacity: .7"></i>
-                    <div style="margin-top: .5rem; opacity: .8">
+                    <i class="pi pi-table icon-large"></i>
+                    <div class="empty-state-text">
                       @if (isExcel()) {
                         Keine <strong>Tabelle</strong> ausgewählt.
                       } @else {
@@ -162,14 +131,12 @@
                   </div>
                 </div>
               } @else {
-
-                <!-- Context toolbar (only when a table/view is selected) -->
                 <p-toolbar class="right-panel-toolbar">
                   <ng-template pTemplate="start">
-                    <div style="display:flex; align-items:center; gap:.5rem">
-                      <i class="pi pi-table" style="opacity:.7"></i>
-                      <span style="font-weight:600">{{ selectedListItem()?.label }}</span>
-                      <span style="opacity:.7">· {{ totalCount() }} Zeilen</span>
+                    <div class="toolbar-content">
+                      <i class="pi pi-table icon-muted"></i>
+                      <span class="text-bold">{{ selectedListItem()?.label }}</span>
+                      <span class="text-muted">· {{ totalCount() }} Zeilen</span>
                     </div>
                   </ng-template>
                   <ng-template pTemplate="end">
@@ -186,9 +153,8 @@
                   </ng-template>
                 </p-toolbar>
 
-                <!-- Always render the table; overlay spinner during loads -->
                 <p-table
-                  style="overflow: hidden"
+                  class="table-overflow"
                   [value]="rows()"
                   size="small"
                   dataKey="id"
@@ -197,7 +163,6 @@
                   [resizableColumns]="true"
                   columnResizeMode="expand"
                   (onColResize)="onColResize()"
-
                   [paginator]="true"
                   paginatorPosition="bottom"
                   [rows]="pageSize()"
@@ -205,27 +170,22 @@
                   [first]="pageIndex() * pageSize()"
                   [showCurrentPageReport]="true"
                   currentPageReportTemplate="{first} bis {last} von {totalRecords}"
-
                   [scrollable]="true"
                   scrollHeight="flex"
-                  [style]="{ flex: '1 1 0' }"
-                  [tableStyle]="{ width: 'max-content' }"
-
                   sortMode="single"
                   [sortField]="sortBy() ?? ''"
                   [sortOrder]="sortDir() === 'asc' ? 1 : -1"
                   (onSort)="onSort($event)"
-
                   (onPage)="onPage($event)"
-
                   [lazy]="true"
                   [lazyLoadOnInit]="false"
+                  [style]="{ flex: '1 1 0' }"
+                  [tableStyle]="{ width: 'max-content' }"
                 >
                   <ng-template pTemplate="colgroup">
                     <colgroup>
                       @for (col of columnNames(); track col) {
-                        <!-- width = saved width OR Excel-like default -->
-                        <col [style.width]="getColWidth(col) || defaultColWidth()"/>
+                        <col [style.width]="getColWidth(col) || defaultColWidth()" />
                       }
                     </colgroup>
                   </ng-template>
@@ -234,7 +194,7 @@
                     <tr>
                       @for (col of columnNames(); track col) {
                         <th pResizableColumn [pSortableColumn]="col">
-                          <div style="display: flex; align-items: center; gap: 0.5rem">
+                          <div class="header-cell-content">
                             {{ col }}
                             <p-sortIcon [field]="col"></p-sortIcon>
                           </div>
@@ -247,8 +207,8 @@
                     <tr>
                       @for (col of columnNames(); track col) {
                         <td
-                          [style.text-align]="isNumber(row[col]) ? 'right' : 'left'"
-                          style="font-variant-numeric: tabular-nums"
+                          class="numeric-cell"
+                          [ngClass]="isNumber(row[col]) ? 'text-align-right' : 'text-align-left'"
                         >
                           {{ row[col] }}
                         </td>
@@ -256,19 +216,15 @@
                     </tr>
                   </ng-template>
 
-                  <!-- No rows → keep headers visible and show message inside the table -->
                   <ng-template pTemplate="emptymessage">
                     <tr>
                       <td [attr.colspan]="columnNames().length || 1">
-                        <div style="padding: 0.75rem">
-                          Keine Daten vorhanden.
-                        </div>
+                        <div class="empty-message">Keine Daten vorhanden.</div>
                       </td>
                     </tr>
                   </ng-template>
                 </p-table>
 
-                <!-- Overlay the spinner while loading rows/columns -->
                 @if (loadingSelection() || loadingRows()) {
                   <app-loading-indicator></app-loading-indicator>
                 }
@@ -276,7 +232,6 @@
             }
           </div>
         </ng-template>
-
       </p-splitter>
     </div>
   </div>

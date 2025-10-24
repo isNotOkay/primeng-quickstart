@@ -12,6 +12,8 @@
 
   .p-splitter {
     border-radius: 0 !important;
+    height: 100%;
+    width: 100%;
   }
 }
 
@@ -29,4 +31,157 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.loading-container {
+  height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.main-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar-start {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.left-panel-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.search-container {
+  margin-bottom: 0.5rem;
+  padding: 10px 10px 0 10px;
+}
+
+.search-clearable {
+  position: relative;
+  width: 100%;
+}
+
+.search-input {
+  padding-right: 2.25rem;
+}
+
+.clear-button {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.group-header {
+  font-weight: 700;
+  color: var(--p-primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.empty-state-container {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+.icon-large {
+  font-size: 1.35rem;
+  opacity: 0.7;
+}
+
+.empty-state-text {
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.toolbar-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-muted {
+  opacity: 0.7;
+}
+
+.text-bold {
+  font-weight: 600;
+}
+
+.text-muted {
+  opacity: 0.7;
+}
+
+.table-overflow {
+  overflow: hidden;
+}
+
+.header-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.numeric-cell {
+  font-variant-numeric: tabular-nums;
+
+  &.text-align-right {
+    text-align: right;
+  }
+
+  &.text-align-left {
+    text-align: left;
+  }
+}
+
+.empty-message {
+  padding: 0.75rem;
+}
+
+::ng-deep .left-listbox {
+  width: 100%;
+  flex-grow: 1;
+  overflow: auto;
+  border: none;
+  box-shadow: none;
+
+  .p-listbox-list-container {
+    overflow: auto;
+    max-height: 100%;
+  }
+}
+
+.listbox-item-placeholder {
+  padding-left: 0.25rem;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.listbox-item-normal {
+  padding-left: 1rem;
+  opacity: 1;
+}
+
+::ng-deep .p-table-wrapper {
+  flex: 1 1 0;
+}
+
+::ng-deep .p-table-scrollable-body-table,
+::ng-deep .p-table-scrollable-header-table {
+  width: max-content;
 }
