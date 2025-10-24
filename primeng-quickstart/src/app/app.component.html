@@ -205,11 +205,8 @@
                     <tr>
                       @for (col of columnNames(); track col) {
                         <td
-                          [ngClass]="{
-                            'numeric-cell': true,
-                            'text-align-right': isNumber(row[col]),
-                            'text-align-left': !isNumber(row[col]),
-                          }"
+                          class="numeric-cell"
+                          [ngClass]="isNumber(row[col]) ? 'text-align-right' : 'text-align-left'"
                         >
                           {{ row[col] }}
                         </td>
