@@ -2,7 +2,7 @@ import { RelationType } from '../enums/relation-type.enum';
 import { getRelationTypeName } from './sql.util';
 
 describe('SQL Utils', () => {
-  describe('getRelationTypeName', () => {
+  describe('getRelationTypeName (deprecated)', () => {
     it('should return "Tabelle" for Table type', () => {
       expect(getRelationTypeName(RelationType.Table)).toBe('Tabelle');
     });
