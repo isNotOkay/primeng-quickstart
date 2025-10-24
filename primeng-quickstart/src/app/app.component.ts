@@ -1,7 +1,7 @@
 // file: src/app/app.component.ts
 import { ChangeDetectorRef, Component, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { NgClass, ViewportScroller } from '@angular/common';
+import { NgClass } from '@angular/common';
 
 import { Table, TableModule } from 'primeng/table';
 import { Listbox } from 'primeng/listbox';
@@ -111,7 +111,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   private readonly tableState = inject(TableStateService);
   private readonly confirmationService = inject(ConfirmationService);
-  private readonly viewportScroller = inject(ViewportScroller);
 
   private loadRowsSubscription?: Subscription;
   private subscriptions: Subscription[] = [];
