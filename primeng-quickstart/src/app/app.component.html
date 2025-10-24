@@ -14,7 +14,7 @@
 @if (
   hubStatus() === 'connecting' ||
   (hubStatus() === 'connected' && !loadedTablesAndViews() && tableItems().length === 0 && viewItems().length === 0)
-  ) {
+) {
   <div class="loading-container">
     <app-loading-indicator></app-loading-indicator>
   </div>
