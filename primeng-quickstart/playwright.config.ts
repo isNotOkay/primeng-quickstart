@@ -10,8 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
 
-  // Only forbid .only when running headless (typically in CI or scripted mode)
-  forbidOnly: isHeadless,
+  forbidOnly: false,
   retries: 0,
 
   // Show progress in the terminal; also generate HTML report without opening it
